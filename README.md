@@ -52,4 +52,3 @@ Users choose one of 20 medical specialties for example Cardiology, Oncology, Neu
 /docs        → Architecture diagram, wireframes, reports
 
 *Prepared for SENG 430 · February 2025*
-<img width="468" height="651" alt="image" src="https://github.com/user-attachments/assets/c9369327-27b7-46d6-947c-f1f8580c98ca" />
