@@ -52,7 +52,7 @@ Users choose one of 20 medical specialties for example Cardiology, Oncology, Neu
 /docs        → Architecture diagram, wireframes, reports
 
  Branch Naming Convention
-
+ 
 feature/sprint-[short-description]  → new feature
 bugfix/sprint- [short-description]   → bug fix
 hotfix/sprint- [short-description]   → urgent fix
