@@ -51,4 +51,16 @@ Users choose one of 20 medical specialties for example Cardiology, Oncology, Neu
 /ml          → Model training scripts
 /docs        → Architecture diagram, wireframes, reports
 
+Branch Naming Rules
+
+feature/sprint1-[short-explanation]   → new feature
+bugfix/[short-explanation]     → bug fixing
+hotfix/[short-explanation]    → emergency fixing
+
+Examples: 
+feature/sprint1-architecture-diagram
+feature/sprint1-figma-wireframes
+feature/sprint2-csv-upload
+bugfix/login-error
+
 *Prepared for SENG 430 · February 2025*
