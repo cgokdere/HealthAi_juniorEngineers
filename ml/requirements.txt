@@ -1,9 +1,11 @@
 fastapi
 uvicorn
 pandas
+numpy
 scikit-learn
 imbalanced-learn
-pydantic
-fpdf2
 shap
-numpy<2.0.0
+httpx
+python-dotenv
+fpdf2
+scipy
