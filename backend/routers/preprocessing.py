@@ -22,6 +22,14 @@ except ImportError:
 
 router = APIRouter(prefix="/api", tags=["preprocessing"])
 
+def _is_identifier_like_series(series: pd.Series) -> bool:
+    non_null = series.dropna()
+    if non_null.empty:
+        return False
+    unique_ratio = non_null.nunique(dropna=True) / len(non_null)
+    # Near-unique object/string columns are typically identifiers, not learnable categories.
+    return unique_ratio >= 0.95 and len(non_null) >= 10
+
 @router.post("/prepare")
 async def prepare_data(req: PrepareRequest):
     try:
@@ -35,9 +43,87 @@ async def prepare_data(req: PrepareRequest):
         if not target_col:
             raise HTTPException(status_code=400, detail=f"Target column '{req.targetColumn}' not found in data")
 
-        feature_cols = [_norm_col_name(c.get("name")) for c in req.columns if c.get("role") in ["numeric", "category"]]
-        num_cols = [_norm_col_name(c.get("name")) for c in req.columns if c.get("role") == "numeric"]
-        cat_cols = [_norm_col_name(c.get("name")) for c in req.columns if c.get("role") == "category"]
+        role_by_col: Dict[str, str] = {}
+        for c in req.columns:
+            raw_name = c.get("name")
+            if not raw_name:
+                continue
+            col_name = _norm_col_name(raw_name)
+            role = (c.get("role") or "").lower()
+            # Identifier role always wins if frontend sends conflicting duplicates.
+            if role_by_col.get(col_name) == "identifier":
+                continue
+            if role == "identifier":
+                role_by_col[col_name] = role
+                continue
+            if col_name not in role_by_col:
+                role_by_col[col_name] = role
+        explicit_identifier_cols = {
+            col_name for col_name, role in role_by_col.items() if role == "identifier"
+        }
+
+        requested_feature_cols = [
+            col_name
+            for col_name, role in role_by_col.items()
+            if role in {"numeric", "category"}
+        ]
+        feature_cols = [
+            c for c in requested_feature_cols
+            if c in df.columns and c != target_col and c not in explicit_identifier_cols
+        ]
+        num_cols = [
+            c for c in feature_cols
+            if role_by_col.get(c) == "numeric"
+        ]
+        cat_cols = [
+            c for c in feature_cols
+            if role_by_col.get(c) == "category"
+        ]
+
+        for col in cat_cols:
+            if col not in df.columns:
+                continue
+            non_null_mask = df[col].notna()
+            df.loc[non_null_mask, col] = df.loc[non_null_mask, col].astype(str).str.strip()
+            df[col] = df[col].replace(r'^\s*$', np.nan, regex=True)
+
+        inferred_identifier_cols = {
+            c for c in cat_cols
+            if pd.api.types.is_object_dtype(df[c]) and _is_identifier_like_series(df[c])
+        }
+        if inferred_identifier_cols:
+            feature_cols = [c for c in feature_cols if c not in inferred_identifier_cols]
+            cat_cols = [c for c in cat_cols if c not in inferred_identifier_cols]
+            warnings.append(
+                f"Excluded identifier-like columns from features: {', '.join(sorted(inferred_identifier_cols))}"
+            )
+
+        high_missing_cols = [
+            c for c in feature_cols
+            if c in df.columns and float(df[c].isna().mean()) > 0.5
+        ]
+        if high_missing_cols:
+            feature_cols = [c for c in feature_cols if c not in high_missing_cols]
+            num_cols = [c for c in num_cols if c not in high_missing_cols]
+            cat_cols = [c for c in cat_cols if c not in high_missing_cols]
+            warnings.append(
+                f"Dropped columns with >50% missing values: {', '.join(sorted(high_missing_cols))}"
+            )
+
+        high_cardinality_cols = []
+        for c in cat_cols:
+            if c in df.columns:
+                num_unique = df[c].nunique()
+                unique_ratio = num_unique / len(df) if len(df) > 0 else 0
+                if num_unique > 40 or unique_ratio > 0.2:
+                    high_cardinality_cols.append(c)
+        
+        if high_cardinality_cols:
+            feature_cols = [c for c in feature_cols if c not in high_cardinality_cols]
+            cat_cols = [c for c in cat_cols if c not in high_cardinality_cols]
+            warnings.append(
+                f"Dropped high-cardinality text columns to prevent memory overload: {', '.join(sorted(high_cardinality_cols))}"
+            )
 
         # --- OUTLIER REMOVAL (ML calling) ---
         dropped_outliers = 0
@@ -82,7 +168,10 @@ async def prepare_data(req: PrepareRequest):
         else:
             X_train, X_test = impute_missing_values(X_train, X_test, req.settings.missingValueStrategy, num_cols, cat_cols)
 
-        fairness_raw_snapshots = {col: (X_train[col].values.copy(), X_test[col].values.copy()) for col in num_cols if _is_demographic_fairness_col(col) and col in X_test.columns}
+        fairness_raw_snapshots = {}
+        for col in df.columns:
+            if _is_demographic_fairness_col(col):
+                fairness_raw_snapshots[col] = (df.loc[X_train.index, col].values.copy(), df.loc[X_test.index, col].values.copy())
 
         # Normalization (ML calling)
         X_train, X_test = normalize_data(X_train, X_test, req.settings.normalisation, num_cols)
@@ -117,19 +206,34 @@ async def prepare_data(req: PrepareRequest):
             for c in df_test_dem.columns: test_df[c] = df_test_dem[c].values
         
         # Add raw snapshots for fairness analysis
-        for col, (tr_raw, te_raw) in fairness_raw_snapshots.items(): test_df[col + "_raw"] = te_raw
+        for col, (tr_raw, te_raw) in fairness_raw_snapshots.items(): 
+            test_df[col + "_raw"] = te_raw
+            if not applied_smote:
+                train_df[col + "_raw"] = tr_raw
         
         # Reverse scaling for raw snapshots if SMOTE was applied (to have reasonable values in fairness analysis)
         if applied_smote and fairness_raw_snapshots:
             for col, (tr_raw, te_raw) in fairness_raw_snapshots.items():
                 if col in train_df.columns:
-                    if req.settings.normalisation == 'zscore':
-                        s, m = before_stats["features"][col].get("std", 1.0), before_stats["features"][col].get("mean", 0.0)
+                    if col in num_cols and req.settings.normalisation == 'zscore':
+                        stats = before_stats["features"].get(col) or {}
+                        s, m = stats.get("std", 1.0), stats.get("mean", 0.0)
                         train_df[col + "_raw"] = train_df[col] * s + m
-                    elif req.settings.normalisation == 'minmax':
-                        mn, mx = before_stats["features"][col].get("min", 0.0), before_stats["features"][col].get("max", 1.0)
+                    elif col in num_cols and req.settings.normalisation == 'minmax':
+                        stats = before_stats["features"].get(col) or {}
+                        mn, mx = stats.get("min", 0.0), stats.get("max", 1.0)
                         train_df[col + "_raw"] = train_df[col] * (mx - mn) + mn
-                    else: train_df[col + "_raw"] = train_df[col]
+                    else: 
+                        train_df[col + "_raw"] = train_df[col]
+                else:
+                    # Demographic column may be excluded from model features; keep original raw values for
+                    # real rows and pad synthetic SMOTE rows so Step 7 can still compute representation.
+                    raw_vals = list(tr_raw)
+                    if len(raw_vals) < len(train_df):
+                        raw_vals.extend([None] * (len(train_df) - len(raw_vals)))
+                    elif len(raw_vals) > len(train_df):
+                        raw_vals = raw_vals[:len(train_df)]
+                    train_df[col + "_raw"] = raw_vals
 
         return clean_nans({
             "ok": True, 

@@ -141,6 +141,22 @@ def compute_fairness_subgroups(df_test: pd.DataFrame, y_test: pd.Series, y_pred:
         return {"subgroups": [], "sensitivity_max_gap_pp": 0.0, "bias_warning": False, "min_subgroup_n": 5}
     
     subgroups: List[Dict[str, Any]] = []
+
+    def _normalize_gender_token(raw: Any, mode: Optional[str]) -> Optional[str]:
+        s = str(raw).strip().lower()
+        if s == "":
+            return None
+        if s in ("m", "male", "man", "boy"):
+            return "male"
+        if s in ("f", "female", "woman", "girl"):
+            return "female"
+        if mode == "01":
+            if s in ("0", "0.0"): return "male"
+            if s in ("1", "1.0"): return "female"
+        if mode == "12":
+            if s in ("1", "1.0"): return "male"
+            if s in ("2", "2.0"): return "female"
+        return None
     
     # Sex/Gender Detection
     gcol = None
@@ -151,15 +167,28 @@ def compute_fairness_subgroups(df_test: pd.DataFrame, y_test: pd.Series, y_pred:
             break
             
     if gcol:
-        uniq = pd.Series(df_test[gcol]).dropna().unique().tolist()
-        for v in uniq[:8]:
-            mask = pd.Series(df_test[gcol]).eq(v).to_numpy()
-            if mask.sum() == 0: continue
-            m = _get_subgroup_metrics(y_true_a[mask], y_pred_a[mask], pos_label, labels)
+        gseries = pd.Series(df_test[gcol])
+        tokens = gseries.dropna().map(lambda v: str(v).strip().lower())
+        token_set = set([t for t in tokens.tolist() if t != ""])
+        numeric_tokens = [t for t in token_set if re.fullmatch(r"\d+(\.0+)?", t)]
+        mode: Optional[str] = None
+        if numeric_tokens and all(t in {"0", "0.0", "1", "1.0"} for t in numeric_tokens):
+            mode = "01"
+        elif numeric_tokens and all(t in {"1", "1.0", "2", "2.0"} for t in numeric_tokens):
+            mode = "12"
+
+        male_mask = gseries.map(lambda v: _normalize_gender_token(v, mode) == "male").to_numpy()
+        female_mask = gseries.map(lambda v: _normalize_gender_token(v, mode) == "female").to_numpy()
+
+        if male_mask.sum() > 0:
+            m = _get_subgroup_metrics(y_true_a[male_mask], y_pred_a[male_mask], pos_label, labels)
             if m:
-                label = str(v).strip().lower()
-                display = "Female" if label in ("f", "female", "woman", "1", "true") else "Male" if label in ("m", "male", "man", "0", "false") else str(v)[:48]
-                subgroups.append({"label": f"Sex: {display}", "n": int(m["n"]), "accuracy": m["accuracy"], "sensitivity": m["sensitivity"], "specificity": m["specificity"]})
+                subgroups.append({"label": "Sex: Male", "n": int(m["n"]), "accuracy": m["accuracy"], "sensitivity": m["sensitivity"], "specificity": m["specificity"]})
+
+        if female_mask.sum() > 0:
+            m = _get_subgroup_metrics(y_true_a[female_mask], y_pred_a[female_mask], pos_label, labels)
+            if m:
+                subgroups.append({"label": "Sex: Female", "n": int(m["n"]), "accuracy": m["accuracy"], "sensitivity": m["sensitivity"], "specificity": m["specificity"]})
 
     # Age Detection
     acol = None
@@ -169,8 +198,22 @@ def compute_fairness_subgroups(df_test: pd.DataFrame, y_test: pd.Series, y_pred:
     
     if acol:
         def parse_age(val):
-            try: return float(val) if val is not None and not (isinstance(val, float) and np.isnan(val)) else None
-            except: return None
+            try:
+                if val is None or (isinstance(val, float) and np.isnan(val)):
+                    return None
+                if isinstance(val, (int, float, np.integer, np.floating)):
+                    return float(val)
+                s = str(val).strip()
+                if not s:
+                    return None
+                nums = re.findall(r"\d+(?:\.\d+)?", s)
+                if len(nums) >= 2:
+                    return (float(nums[0]) + float(nums[1])) / 2.0
+                if len(nums) == 1:
+                    return float(nums[0])
+                return None
+            except:
+                return None
         
         ages = df_test[acol].map(parse_age)
         bucket_defs = [("Age 18–60", lambda a: a.notna() & (a >= 18) & (a <= 60)), ("Age 61–75", lambda a: a.notna() & (a >= 61) & (a <= 75)), ("Age 76+", lambda a: a.notna() & (a >= 76))]
@@ -205,8 +248,16 @@ def _get_subgroup_metrics(y_true, y_pred, pos_label, labels):
             sens = tp / (tp + fn) if (tp + fn) > 0 else 0.0
             spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
         else:
-            sens = float(recall_score(y_true, y_pred, pos_label=pos_label, zero_division=0))
-            spec = 0.0
+            sens = float(recall_score(y_true, y_pred, average="macro", zero_division=0))
+            specs: List[float] = []
+            for i in range(cm.shape[0]):
+                tp_i = float(cm[i, i])
+                fn_i = float(cm[i, :].sum() - tp_i)
+                fp_i = float(cm[:, i].sum() - tp_i)
+                tn_i = float(cm.sum() - tp_i - fn_i - fp_i)
+                denom = tn_i + fp_i
+                specs.append((tn_i / denom) if denom > 0 else 0.0)
+            spec = float(np.mean(specs)) if specs else 0.0
     except:
         sens = 0.0
         spec = 0.0

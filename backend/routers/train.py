@@ -44,6 +44,9 @@ async def train_model_endpoint(req: TrainingRequest):
         if df_train.empty or df_test.empty:
             raise HTTPException(status_code=400, detail="Training or testing data is empty")
             
+        available_features = [f for f in req.features if f in df_train.columns]
+        req.features = available_features
+        
         X_train = df_train[req.features]
         y_train = df_train[req.targetColumn]
         X_test = df_test[req.features]
@@ -73,7 +76,7 @@ async def train_model_endpoint(req: TrainingRequest):
         labels = np.array(metrics["labels"])
         pos_label = metrics["positive_label"]
         pos_idx = None
-        if pos_label in model.classes_:
+        if pos_label is not None and pos_label in model.classes_:
             pos_idx = list(model.classes_).index(pos_label)
             
         explain_payload = {}
@@ -105,7 +108,8 @@ async def train_model_endpoint(req: TrainingRequest):
             "specificity": f"{int(round(metrics['specificity'] * 100))}%",
             "precision": f"{int(round(metrics['precision'] * 100))}%",
             "f1_score": f"{int(round(metrics['f1_score'] * 100))}%",
-            "auc": round(float(metrics['auc']), 2),
+            "auc": round(float(metrics['auc']), 4),
+            "auc_pct": f"{int(round(float(metrics['auc']) * 100))}%",
             "tn": int(cm['tn']),
             "fp": int(cm['fp']),
             "fn": int(cm['fn']),
@@ -113,7 +117,7 @@ async def train_model_endpoint(req: TrainingRequest):
             "roc_points": metrics['roc_points'],
             "feature_importance": explain_payload.get("feature_importance", []),
             "test_explanations": explain_payload.get("test_explanations", []),
-            "positive_class": str(pos_label),
+            "positive_class": str(pos_label) if pos_label is not None else None,
             "fairness": fairness_payload,
             "overfit_suspected": bool(overfit_suspected),
             "perfect_score": bool(perfect_score),

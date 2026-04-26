@@ -318,9 +318,32 @@ async function onApplyPreparation() {
 }
 
 // Memory persistence
+function compressRows(rows) {
+    if (!rows || rows.length === 0) return rows;
+    const columns = Object.keys(rows[0]);
+    const data = rows.map(r => columns.map(c => r[c]));
+    return { columns, data, __isCompressed: true };
+}
+
+function decompressRows(compressed) {
+    if (!compressed || !compressed.__isCompressed) return compressed;
+    const { columns, data } = compressed;
+    return data.map(rowArr => {
+        const obj = {};
+        columns.forEach((col, i) => obj[col] = rowArr[i]);
+        return obj;
+    });
+}
+
 function savePreprocessedData(data) {
     try {
-        const zip = JSON.stringify(data);
+        // Compress the rows to prevent QuotaExceededError
+        const dataToSave = {
+            ...data,
+            trainRows: compressRows(data.trainRows),
+            testRows: compressRows(data.testRows)
+        };
+        const zip = JSON.stringify(dataToSave);
         sessionStorage.setItem('healthai_preprocessed', zip);
     } catch (e) {
         console.warn("Could not save to sessionStorage (quota exceeded?):", e);
@@ -330,7 +353,12 @@ function savePreprocessedData(data) {
 function loadPreprocessedData() {
     try {
         const d = sessionStorage.getItem('healthai_preprocessed');
-        return d ? JSON.parse(d) : null;
+        const parsed = d ? JSON.parse(d) : null;
+        if (parsed) {
+            parsed.trainRows = decompressRows(parsed.trainRows);
+            parsed.testRows = decompressRows(parsed.testRows);
+        }
+        return parsed;
     } catch (e) { return null; }
 }
 
