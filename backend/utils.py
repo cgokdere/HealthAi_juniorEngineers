@@ -119,7 +119,19 @@ def _norm_col_name(name: Any) -> str:
     return str(name).lstrip("\ufeff").strip() if name is not None else ""
 
 def _detect_gender_column_fairness(df: pd.DataFrame) -> Optional[str]:
-    for c in df.columns:
+    cols = list(df.columns)
+    # 1. Exact match for raw
+    for c in cols:
+        cl = str(c).lower().strip()
+        if cl in ("gender_raw", "sex_raw"): return c
+    # 2. Any _raw that matches demographic
+    for c in cols:
+        cl = str(c).lower().strip()
+        if cl.endswith("_raw"):
+            base = re.sub(r"_raw$", "", cl, flags=re.IGNORECASE)
+            if base in ("sex", "gender") or "gender" in base or base.startswith("sex"): return c
+    # 3. Fallback to normal column
+    for c in cols:
         cl = str(c).lower().strip()
         if "gender" in cl or cl == "sex" or cl.startswith("sex"): return c
     return None
@@ -168,10 +180,22 @@ def _subgroup_metrics_cm(y_true: np.ndarray, y_pred: np.ndarray, pos_label: Any,
             sens = tp / (tp + fn) if (tp + fn) > 0 else 0.0
             spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
         else:
-            sens = float(recall_score(y_true, y_pred, pos_label=pos_label, zero_division=0))
-            spec = 0.0
+            sens = float(recall_score(y_true, y_pred, average="macro", zero_division=0))
+            specs: List[float] = []
+            for i in range(cm.shape[0]):
+                tp_i = float(cm[i, i])
+                fn_i = float(cm[i, :].sum() - tp_i)
+                fp_i = float(cm[:, i].sum() - tp_i)
+                tn_i = float(cm.sum() - tp_i - fn_i - fp_i)
+                denom = tn_i + fp_i
+                specs.append((tn_i / denom) if denom > 0 else 0.0)
+            spec = float(np.mean(specs)) if specs else 0.0
     except Exception:
-        sens = float(recall_score(y_true, y_pred, pos_label=pos_label, zero_division=0))
+        unique_labels = np.unique(np.concatenate([y_true, y_pred]))
+        if len(unique_labels) > 2:
+            sens = float(recall_score(y_true, y_pred, average="macro", zero_division=0))
+        else:
+            sens = float(recall_score(y_true, y_pred, pos_label=pos_label, zero_division=0))
         spec = 0.0
     return {"n": n, "accuracy": acc, "sensitivity": sens, "specificity": spec}
 

@@ -25,11 +25,43 @@ const SS = {
 };
 
 // ── SAVE / LOAD SESSION ──────────────────────────────────────────
+function compressRows(rows) {
+    if (!rows || rows.length === 0) return rows;
+    const columns = Object.keys(rows[0]);
+    const data = rows.map(r => columns.map(c => r[c]));
+    return { columns, data, __isCompressed: true };
+}
+
+function decompressRows(compressed) {
+    if (!compressed || !compressed.__isCompressed) return compressed;
+    const { columns, data } = compressed;
+    return data.map(rowArr => {
+        const obj = {};
+        columns.forEach((col, i) => obj[col] = rowArr[i]);
+        return obj;
+    });
+}
+
 function saveDataset(ds) {
-  try { sessionStorage.setItem(SS.DATASET, JSON.stringify(ds)); } catch (e) { console.warn('sessionStorage full', e); }
+  try {
+    const dsToSave = { ...ds };
+    if (dsToSave.rawRows) dsToSave.rawRows = compressRows(dsToSave.rawRows);
+    sessionStorage.setItem(SS.DATASET, JSON.stringify(dsToSave)); 
+  } catch (e) { 
+    console.warn('sessionStorage full', e); 
+  }
 }
 function loadDataset() {
-  try { const v = sessionStorage.getItem(SS.DATASET); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+  try { 
+    const v = sessionStorage.getItem(SS.DATASET); 
+    const parsed = v ? JSON.parse(v) : null; 
+    if (parsed && parsed.rawRows && parsed.rawRows.__isCompressed) {
+        parsed.rawRows = decompressRows(parsed.rawRows);
+    }
+    return parsed;
+  } catch (e) { 
+    return null; 
+  }
 }
 function saveSchemaOK(ok) {
   try {

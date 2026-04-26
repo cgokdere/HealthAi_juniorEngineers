@@ -17,21 +17,32 @@ def impute_missing_values(X_train: pd.DataFrame, X_test: pd.DataFrame, strategy:
     num_strategy = 'most_frequent' if strategy == 'mode' else 'median'
     
     if num_cols:
-        # Find which columns are actually in X_train
         valid_num = [c for c in num_cols if c in X_train.columns]
-        if valid_num:
+        for col in valid_num:
+            if X_train[col].isna().all():
+                X_train[col] = 0.0
+                if not X_test.empty and col in X_test.columns:
+                    X_test[col] = 0.0
+                continue
+
             num_imputer = SimpleImputer(strategy=num_strategy)
-            X_train[valid_num] = num_imputer.fit_transform(X_train[valid_num])
-            if not X_test.empty:
-                X_test[valid_num] = num_imputer.transform(X_test[valid_num])
+            X_train[[col]] = num_imputer.fit_transform(X_train[[col]])
+            if not X_test.empty and col in X_test.columns:
+                X_test[[col]] = num_imputer.transform(X_test[[col]])
     
     if cat_cols:
         valid_cat = [c for c in cat_cols if c in X_train.columns]
-        if valid_cat:
+        for col in valid_cat:
+            if X_train[col].isna().all():
+                X_train[col] = 'missing'
+                if not X_test.empty and col in X_test.columns:
+                    X_test[col] = 'missing'
+                continue
+
             cat_imputer = SimpleImputer(strategy='most_frequent')
-            X_train[valid_cat] = cat_imputer.fit_transform(X_train[valid_cat])
-            if not X_test.empty:
-                X_test[valid_cat] = cat_imputer.transform(X_test[valid_cat])
+            X_train[[col]] = cat_imputer.fit_transform(X_train[[col]])
+            if not X_test.empty and col in X_test.columns:
+                X_test[[col]] = cat_imputer.transform(X_test[[col]])
                 
     return X_train, X_test
 

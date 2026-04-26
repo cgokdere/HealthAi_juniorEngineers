@@ -977,15 +977,37 @@ async function doRealTraining(activeModel) {
   }
 
   let prepData;
+  let rawStorageStr = null;
   try {
-    const d = sessionStorage.getItem('healthai_preprocessed');
-    prepData = d ? JSON.parse(d) : null;
+    rawStorageStr = sessionStorage.getItem('healthai_preprocessed');
+    prepData = rawStorageStr ? JSON.parse(rawStorageStr) : null;
   } catch (e) { }
 
+  const decompressRowsLocal = (compressed) => {
+    if (!compressed || !compressed.__isCompressed) return compressed;
+    const { columns, data } = compressed;
+    return data.map(rowArr => {
+        const obj = {};
+        columns.forEach((col, i) => obj[col] = rowArr[i]);
+        return obj;
+    });
+  };
+
+  if (prepData) {
+      prepData.trainRows = decompressRowsLocal(prepData.trainRows);
+      prepData.testRows = decompressRowsLocal(prepData.testRows);
+  }
+
   if (!prepData || !prepData.trainRows || prepData.trainRows.length === 0) {
+    let diag = "Diagnostic info: ";
+    if (!rawStorageStr) diag += "Storage is completely EMPTY (null). This means Step 3 failed to save (Quota Exceeded?). ";
+    else if (!prepData) diag += "JSON.parse failed. ";
+    else if (!prepData.trainRows) diag += "trainRows array is missing from the saved JSON. ";
+    else diag += "trainRows array is empty (length 0). ";
+    
     showGlobalPopup({
       title: 'Action required',
-      message: 'No preprocessed data found. Please complete Step 2 (Data Loading) and Step 3 (Preparation) first.',
+      message: 'No preprocessed data found. Please complete Step 2 (Data Loading) and Step 3 (Preparation) first.\n\n' + diag,
       variant: 'bad',
     });
     return;
@@ -2827,11 +2849,16 @@ function renderCorrelationHeatmap() {
   if (!window.correlationData) {
     try {
       const saved = sessionStorage.getItem('healthai_correlation');
-      if (saved) window.correlationData = JSON.parse(saved);
+      if (saved && saved !== 'null') window.correlationData = JSON.parse(saved);
     } catch (e) { }
   }
   if (!window.correlationData) {
-    container.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0;">Apply preparation settings in Step 3 to see feature correlations.</p>';
+    const isPrepared = !!sessionStorage.getItem('healthai_preprocessed');
+    if (isPrepared) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0;">Not enough numeric features to generate a correlation matrix. At least 2 numeric features are required.</p>';
+    } else {
+      container.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0;">Apply preparation settings in Step 3 to see feature correlations.</p>';
+    }
     return;
   }
   const { columns, data } = window.correlationData;
@@ -2997,40 +3024,172 @@ function _findColMeta(columns, re) {
   return columns.find(function (c) { return c && c.name && re.test(String(c.name)); });
 }
 
+function _findRowKeyByRegex(rows, re) {
+  if (!rows || !rows.length || !rows[0]) return null;
+  const keys = Object.keys(rows[0]);
+  const hit = keys.find(function (k) { return re.test(String(k)); });
+  return hit || null;
+}
+
+function _isAgeLikeKey(key) {
+  const k = String(key || '').trim().toLowerCase();
+  if (!k) return false;
+  return k === 'age' || k === 'age_raw' || k === 'patient_age' || k === 'age_years' || k === 'age_year';
+}
+
+function _isGenderLikeKey(key) {
+  const k = String(key || '').trim().toLowerCase();
+  if (!k) return false;
+  return k === 'sex' || k === 'gender' || k === 'sex_raw' || k === 'gender_raw'
+    || /^sex[_-]/.test(k) || /[_-]sex$/.test(k)
+    || /^gender[_-]/.test(k) || /[_-]gender$/.test(k);
+}
+
+function _findAgeRowKey(rows) {
+  if (!rows || !rows.length || !rows[0]) return null;
+  const keys = Object.keys(rows[0]);
+  const rawHit = keys.find(function (k) { return _isAgeLikeKey(k) && String(k).toLowerCase().endsWith('_raw'); });
+  if (rawHit) return rawHit;
+  const exactHit = keys.find(function (k) { return _isAgeLikeKey(k); });
+  if (exactHit) return exactHit;
+  const broad = keys.filter(function (k) {
+    const s = String(k || '').trim().toLowerCase();
+    if (s.includes('percentage')) return false;
+    return /(^|[^a-z])age([^a-z]|$)/i.test(s);
+  });
+  if (!broad.length) return null;
+  let bestKey = null;
+  let bestScore = -1;
+  const sampleN = Math.min(rows.length, 500);
+  broad.forEach(function (k) {
+    let valid = 0;
+    let plausible = 0;
+    for (let i = 0; i < sampleN; i++) {
+      const a = _parseAge(rows[i][k]);
+      if (a === null) continue;
+      valid++;
+      if (a >= 0 && a <= 120) plausible++;
+    }
+    if (valid === 0) return;
+    const ratio = plausible / valid;
+    let score = ratio;
+    const kk = String(k).toLowerCase();
+    if (kk === 'age' || kk === 'age_raw') score += 0.2;
+    if (kk.endsWith('_raw')) score += 0.1;
+    if (score > bestScore) {
+      bestScore = score;
+      bestKey = k;
+    }
+  });
+  return bestScore >= 0.6 ? bestKey : null;
+}
+
+function _findGenderRowKey(rows) {
+  if (!rows || !rows.length || !rows[0]) return null;
+  const keys = Object.keys(rows[0]);
+  const rawHit = keys.find(function (k) { return _isGenderLikeKey(k) && String(k).toLowerCase().endsWith('_raw'); });
+  if (rawHit) return rawHit;
+  const directHit = keys.find(function (k) { return _isGenderLikeKey(k); });
+  if (directHit) return directHit;
+  const broad = keys.filter(function (k) {
+    const s = String(k || '').trim().toLowerCase();
+    return /(^|[^a-z])(sex|gender)([^a-z]|$)/i.test(s);
+  });
+  if (!broad.length) return null;
+  let bestKey = null;
+  let bestScore = -1;
+  const sampleN = Math.min(rows.length, 500);
+  broad.forEach(function (k) {
+    let known = 0;
+    let total = 0;
+    for (let i = 0; i < sampleN; i++) {
+      const v = String(rows[i][k] ?? '').trim().toLowerCase();
+      if (!v) continue;
+      total++;
+      if (v === 'm' || v === 'male' || v === 'man' || v === 'f' || v === 'female' || v === 'woman' ||
+        v === '0' || v === '1' || v === '2' || v === '0.0' || v === '1.0' || v === '2.0' ||
+        v === 'true' || v === 'false') {
+        known++;
+      }
+    }
+    if (total === 0) return;
+    let score = known / total;
+    const kk = String(k).toLowerCase();
+    if (kk === 'gender' || kk === 'sex' || kk === 'gender_raw' || kk === 'sex_raw') score += 0.2;
+    if (kk.endsWith('_raw')) score += 0.1;
+    if (score > bestScore) {
+      bestScore = score;
+      bestKey = k;
+    }
+  });
+  return bestScore >= 0.6 ? bestKey : null;
+}
+
 function _parseAge(v) {
   if (v === undefined || v === null || v === '') return null;
-  const n = Number(v);
+  let n = Number(v);
+  if (!Number.isFinite(n) && typeof v === 'string') {
+    const nums = v.match(/\d+(\.\d+)?/g);
+    if (nums && nums.length >= 2) {
+      n = (Number(nums[0]) + Number(nums[1])) / 2;
+    } else if (nums && nums.length === 1) {
+      n = Number(nums[0]);
+    }
+  }
   return Number.isFinite(n) ? n : null;
 }
 
-function _computeTrainingRep(trainRows, columns) {
+function _computeTrainingRep(trainRows) {
   const ref = window.HEALTHAI_REFERENCE_POPULATION;
   const out = { gender: null, age: null };
-  if (!trainRows || !trainRows.length || !columns) return out;
+  if (!trainRows || !trainRows.length) return out;
 
-  const gColBase = _findColMeta(columns, /sex|gender/i);
-  const aColBase = _findColMeta(columns, /age/i);
+  // Read directly from training rows so Step 7 is independent from dataset metadata.
+  const gRowBase = _findGenderRowKey(trainRows);
+  const aRowBase = _findAgeRowKey(trainRows);
 
   // Prefer _raw versions if they exist (added by backend for Step 7 representation)
-  const gCol = (gColBase && trainRows[0] && (gColBase.name + '_raw') in trainRows[0]) ? { name: gColBase.name + '_raw' } : gColBase;
-  const aCol = (aColBase && trainRows[0] && (aColBase.name + '_raw') in trainRows[0]) ? { name: aColBase.name + '_raw' } : aColBase;
+  const gBaseName = gRowBase;
+  const aBaseName = aRowBase;
+
+  const gCol = gBaseName
+    ? (((gBaseName + '_raw') in trainRows[0]) ? { name: gBaseName + '_raw' } : { name: gBaseName })
+    : null;
+  const aCol = aBaseName
+    ? (((aBaseName + '_raw') in trainRows[0]) ? { name: aBaseName + '_raw' } : { name: aBaseName })
+    : null;
 
   const n = trainRows.length;
 
   if (gCol) {
     let m = 0; let f = 0;
+    let known = 0;
+    const tokens = trainRows
+      .map(function (r) { return String(r[gCol.name] ?? '').trim().toLowerCase(); })
+      .filter(function (v) { return v !== ''; });
+    const tokenSet = new Set(tokens);
+    const numericCodes = Array.from(tokenSet).filter(function (t) { return /^\d+(\.0+)?$/.test(t); });
+    const is01 = numericCodes.length > 0 && numericCodes.every(function (t) { return t === '0' || t === '1' || t === '1.0' || t === '0.0'; });
+    const is12 = numericCodes.length > 0 && numericCodes.every(function (t) { return t === '1' || t === '2' || t === '1.0' || t === '2.0'; });
+
     trainRows.forEach(function (r) {
       const v = String(r[gCol.name] ?? '').trim().toLowerCase();
-      if (v === '0' || v === 'm' || v === 'male' || v === 'man') m++;
-      else if (v === '1' || v === 'f' || v === 'female' || v === 'woman') f++;
-      else if (v) m++;
+      if (!v) return;
+      if (v === 'm' || v === 'male' || v === 'man' || v === 'true') { m++; known++; return; }
+      if (v === 'f' || v === 'female' || v === 'woman' || v === 'false') { f++; known++; return; }
+      if (is01 && (v === '0' || v === '0.0')) { m++; known++; return; }
+      if (is01 && (v === '1' || v === '1.0')) { f++; known++; return; }
+      if (is12 && (v === '1' || v === '1.0')) { m++; known++; return; }
+      if (is12 && (v === '2' || v === '2.0')) { f++; known++; return; }
     });
-    out.gender = {
-      malePct: Math.round((m / n) * 100),
-      femalePct: Math.round((f / n) * 100),
-      refMale: ref.sex.malePct,
-      refFemale: ref.sex.femalePct
-    };
+    if (known > 0) {
+      out.gender = {
+        malePct: Math.round((m / known) * 100),
+        femalePct: Math.round((f / known) * 100),
+        refMale: ref.sex.malePct,
+        refFemale: ref.sex.femalePct
+      };
+    }
   }
 
   if (aCol) {
@@ -3042,15 +3201,17 @@ function _computeTrainingRep(trainRows, columns) {
       else if (a >= 61 && a <= 75) b2++;
       else if (a >= 76) b3++;
     });
-    const denom = Math.max(1, trainRows.filter(function (r) { return _parseAge(r[aCol.name]) !== null; }).length);
-    out.age = {
-      b18_60: Math.round((b1 / denom) * 100),
-      b61_75: Math.round((b2 / denom) * 100),
-      b76: Math.round((b3 / denom) * 100),
-      ref18_60: ref.ageBuckets['18-60'],
-      ref61_75: ref.ageBuckets['61-75'],
-      ref76: ref.ageBuckets['76+']
-    };
+    const denom = trainRows.filter(function (r) { return _parseAge(r[aCol.name]) !== null; }).length;
+    if (denom > 0) {
+      out.age = {
+        b18_60: Math.round((b1 / denom) * 100),
+        b61_75: Math.round((b2 / denom) * 100),
+        b76: Math.round((b3 / denom) * 100),
+        ref18_60: ref.ageBuckets['18-60'],
+        ref61_75: ref.ageBuckets['61-75'],
+        ref76: ref.ageBuckets['76+']
+      };
+    }
   }
 
   return out;
@@ -3083,7 +3244,19 @@ function renderStep7Ethics() {
     let ds = null;
     let prep = null;
     try { if (dsStr) ds = JSON.parse(dsStr); } catch (e) { }
-    try { if (prepStr) prep = JSON.parse(prepStr); } catch (e) { }
+    try { 
+      if (prepStr) {
+        prep = JSON.parse(prepStr); 
+        if (prep && prep.trainRows && prep.trainRows.__isCompressed) {
+          const { columns, data } = prep.trainRows;
+          prep.trainRows = data.map(function(rowArr) {
+            const obj = {};
+            columns.forEach(function(col, i) { obj[col] = rowArr[i]; });
+            return obj;
+          });
+        }
+      }
+    } catch (e) { }
 
     const cardTitles = document.querySelectorAll('#step-7 .card-title');
     const subgroupCard = Array.from(cardTitles).find(function (el) { return el.textContent.includes('Subgroup Performance'); })?.parentElement;
@@ -3112,7 +3285,9 @@ function renderStep7Ethics() {
         } else {
           let html = '';
           const minN = fairness.min_subgroup_n || 5;
-          const maxSens = Math.max.apply(null, fairness.subgroups.filter(function (g) { return g.n >= minN; }).map(function (g) { return g.sensitivity; }));
+          const eligible = fairness.subgroups.filter(function (g) { return g.n >= minN; });
+          const pool = eligible.length ? eligible : fairness.subgroups;
+          const maxSens = Math.max.apply(null, pool.map(function (g) { return g.sensitivity; }));
 
           fairness.subgroups.forEach(function (g) {
             const ft = _fairnessTagHtml(g.sensitivity);
@@ -3126,25 +3301,31 @@ function renderStep7Ethics() {
           });
           tbody.innerHTML = html;
 
-          if (fairness.bias_warning) {
-            const gap = fairness.sensitivity_max_gap_pp || 0;
-            const flagged = fairness.subgroups.filter(function (g) {
-              return g.n >= minN && (maxSens - g.sensitivity) > 0.1000001;
-            });
-            if (flagged.length) {
-              bannerContainer.innerHTML = flagged.map(function (g) {
-                const ft = _fairnessTagHtml(g.sensitivity);
-                const diff = Math.round((maxSens - g.sensitivity) * 100);
-                const isBad = ft.isBad;
-                const bannerClass = isBad ? 'bad' : 'warn';
-                const icon = isBad ? '🚨' : '⚠️';
-                const title = isBad ? 'Bias Detected' : 'Performance Gap';
+          const gap = fairness.sensitivity_max_gap_pp || 0;
+          const flagged = fairness.subgroups.filter(function (g) {
+            return (g.sensitivity < 0.60 || (maxSens - g.sensitivity) > 0.1000001);
+          });
+
+          if (flagged.length) {
+            bannerContainer.innerHTML = flagged.map(function (g) {
+              const diff = Math.round((maxSens - g.sensitivity) * 100);
+              const isBad = g.sensitivity < 0.50;
+              const bannerClass = isBad ? 'bad' : 'warn';
+              const icon = isBad ? '🚨' : '⚠️';
+              const title = isBad ? 'Review Needed' : 'Performance Gap';
+              let text = '';
+              
+              if (isBad && diff <= 10) {
+                text = 'Absolute sensitivity for <b>' + g.label + '</b> is very low (<b>' + Math.round(g.sensitivity * 100) + '%</b>). The model fails to reliably detect positive cases for this demographic. This model should NOT be deployed until performance is improved.';
+              } else {
                 const actionText = isBad ? 'This model should NOT be deployed until this gap is addressed.' : 'This gap should be investigated to ensure fair clinical outcomes.';
-                return '<div class="banner ' + bannerClass + '"><div class="banner-icon">' + icon + '</div><div><b>' + title + ':</b> Sensitivity for <b>' + g.label + '</b> is <b>' + diff + '</b> percentage points below the best subgroup. Max sensitivity gap across subgroups (n≥' + minN + '): <b>' + gap + '</b> pp (threshold &gt;10 pp). ' + actionText + '</div></div>';
-              }).join('');
-            } else {
-              bannerContainer.innerHTML = '<div class="banner warn"><div class="banner-icon">⚠️</div><div><b>Sensitivity spread:</b> Up to <b>' + gap + '</b> percentage points between subgroups (n≥' + minN + '). Investigate calibration and data balance.</div></div>';
-            }
+                text = 'Sensitivity for <b>' + g.label + '</b> is <b>' + diff + '</b> percentage points below the best subgroup. ' + actionText;
+              }
+              
+              return '<div class="banner ' + bannerClass + '"><div class="banner-icon">' + icon + '</div><div><b>' + title + ':</b> ' + text + '</div></div>';
+            }).join('');
+          } else if (fairness.bias_warning) {
+            bannerContainer.innerHTML = '<div class="banner warn"><div class="banner-icon">⚠️</div><div><b>Sensitivity spread:</b> Up to <b>' + gap + '</b> percentage points between subgroups (n≥' + minN + '). Investigate calibration and data balance.</div></div>';
           } else {
             bannerContainer.innerHTML = '';
           }
@@ -3153,9 +3334,9 @@ function renderStep7Ethics() {
     }
 
     const repCard = Array.from(cardTitles).find(function (el) { return el.textContent.includes('Training Data Representation'); })?.parentElement;
-    if (repCard && ds && ds.columns && prep && prep.trainRows) {
+    if (repCard && prep && prep.trainRows) {
       const theBars = repCard.querySelector('.bars');
-      const rep = _computeTrainingRep(prep.trainRows, ds.columns);
+      const rep = _computeTrainingRep(prep.trainRows);
       let foot = repCard.querySelector('.healthai-ref-footnote');
       if (!foot) {
         foot = document.createElement('div');
