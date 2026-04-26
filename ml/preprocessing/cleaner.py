@@ -17,6 +17,13 @@ def detect_outliers_iqr(df: pd.DataFrame, num_cols: List[str]) -> Dict[str, Any]
     outlier_indices = set()
     details = []
     total_rows = len(df)
+    row_hit_counts: Dict[int, int] = {}
+    # Use a slightly wider fence than classical 1.5*IQR to reduce false positives
+    # on noisy clinical datasets.
+    iqr_multiplier = 2.0
+    # In wide datasets, a row should be extreme in at least 2 numeric columns
+    # before being considered an outlier row.
+    min_columns_for_row_outlier = 2 if len(valid_cols) >= 6 else 1
     
     for col in valid_cols:
         series = df[col].dropna()
@@ -25,14 +32,18 @@ def detect_outliers_iqr(df: pd.DataFrame, num_cols: List[str]) -> Dict[str, Any]
         Q1 = series.quantile(0.25)
         Q3 = series.quantile(0.75)
         IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
+        if pd.isna(IQR) or IQR == 0:
+            # Constant / near-constant columns should not mark outliers.
+            continue
+        lower_bound = Q1 - iqr_multiplier * IQR
+        upper_bound = Q3 + iqr_multiplier * IQR
         
         col_outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)]
         count = len(col_outliers)
         
         if count > 0:
-            outlier_indices.update(col_outliers.index.tolist())
+            for idx in col_outliers.index.tolist():
+                row_hit_counts[idx] = row_hit_counts.get(idx, 0) + 1
             details.append({
                 "column": col,
                 "count": count,
@@ -41,6 +52,11 @@ def detect_outliers_iqr(df: pd.DataFrame, num_cols: List[str]) -> Dict[str, Any]
                 "lower_bound": float(lower_bound),
                 "upper_bound": float(upper_bound)
             })
+
+    outlier_indices = {
+        idx for idx, hits in row_hit_counts.items()
+        if hits >= min_columns_for_row_outlier
+    }
 
     return {
         "total_count": total_rows,

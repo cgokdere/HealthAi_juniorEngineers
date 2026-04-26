@@ -510,6 +510,28 @@ async function onDetectOutliers() {
     btn.innerHTML = '⏳ Scanning Data...';
     btn.disabled = true;
 
+    const renderOutlierRateWarning = (percentage) => {
+        const outlierChoice = document.querySelector('#outlierResultsArea .outlier-choice');
+        if (!outlierChoice) return;
+
+        let warnEl = document.getElementById('outlierRateWarning');
+        if (!warnEl) {
+            warnEl = document.createElement('div');
+            warnEl.id = 'outlierRateWarning';
+            warnEl.className = 'banner warn';
+            warnEl.style.marginTop = '12px';
+            outlierChoice.appendChild(warnEl);
+        }
+
+        if (percentage > 10) {
+            warnEl.style.display = 'flex';
+            warnEl.innerHTML = `<div class="banner-icon">⚠️</div><div><b>High outlier rate:</b> ${percentage}% of rows are flagged. Removing all may drop too much clinical data. Review column ranges and consider keeping outliers unless values are clearly erroneous.</div>`;
+        } else {
+            warnEl.style.display = 'none';
+            warnEl.innerHTML = '';
+        }
+    };
+
     // Resolve column roles (same as in onApplyPreparation)
     const savedRoles = typeof loadColumnRoles === 'function' ? loadColumnRoles() : {};
     const resolvedColumns = ds.columns.map(c => {
@@ -544,6 +566,7 @@ async function onDetectOutliers() {
         // Show results
         resultsArea.style.display = 'block';
         summaryText.innerHTML = `Identified <b>${data.outliers_found}</b> total outlier rows (<b>${data.percentage}%</b> of dataset).`;
+        renderOutlierRateWarning(Number(data.percentage) || 0);
 
         if (data.outliers_found > 0) {
             banner.className = 'banner warn';
