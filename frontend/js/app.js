@@ -348,6 +348,11 @@ if (domainSelect) {
       schemaOK = false;
       try {
         localStorage.removeItem('heathAI_schemaOK');
+        sessionStorage.removeItem('healthai_dataset');
+        sessionStorage.removeItem('healthai_dataSource');
+        sessionStorage.removeItem('healthai_columnRoles');
+        sessionStorage.removeItem('healthai_targetCol');
+        sessionStorage.removeItem('healthai_schemaOK');
         sessionStorage.removeItem('healthai_preprocessed');
         sessionStorage.removeItem('healthai_prep_visible');
         sessionStorage.removeItem('healthai_correlation');
@@ -376,6 +381,11 @@ document.querySelectorAll('.domain-pill').forEach(pill => {
       schemaOK = false;
       try {
         localStorage.removeItem('heathAI_schemaOK');
+        sessionStorage.removeItem('healthai_dataset');
+        sessionStorage.removeItem('healthai_dataSource');
+        sessionStorage.removeItem('healthai_columnRoles');
+        sessionStorage.removeItem('healthai_targetCol');
+        sessionStorage.removeItem('healthai_schemaOK');
         sessionStorage.removeItem('healthai_preprocessed');
         sessionStorage.removeItem('healthai_prep_visible');
         sessionStorage.removeItem('healthai_correlation');
@@ -434,21 +444,65 @@ document.getElementById('csvInput').addEventListener('change', e => handleFile(e
 function handleFile(file) {
   const status = document.getElementById('uploadStatus');
   const error = document.getElementById('uploadError');
+  const msgEl = document.getElementById('uploadMsg');
+  const errMsgEl = document.getElementById('uploadErrMsg');
   status.style.display = 'none'; error.style.display = 'none';
   if (!file) return;
-  if (!file.name.endsWith('.csv')) {
+  if (!file.name.toLowerCase().endsWith('.csv')) {
     error.style.display = 'block';
-    document.getElementById('uploadErrMsg').textContent = 'This file is not a CSV. Please export your data as a .csv file.';
+    errMsgEl.textContent = 'This file is not a CSV. Please export your data as a .csv file.';
     dz.classList.add('error'); return;
   }
   if (file.size > 52428800) {
     error.style.display = 'block';
-    document.getElementById('uploadErrMsg').textContent = 'File exceeds 50 MB. Please reduce the file to 50,000 rows or fewer.';
+    errMsgEl.textContent = 'File exceeds 50 MB. Please reduce the file to 50,000 rows or fewer.';
     dz.classList.add('error'); return;
   }
-  dz.classList.remove('error'); dz.classList.add('has-file');
-  status.style.display = 'block';
-  document.getElementById('uploadMsg').textContent = `✓ "${file.name}" loaded (${(file.size / 1024).toFixed(0)} KB). Detecting columns…`;
+  dz.classList.remove('error');
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      if (typeof Papa === 'undefined' || typeof analyseCSV !== 'function') {
+        error.style.display = 'block';
+        errMsgEl.textContent = 'CSV parser is not available. Please reload the page and try again.';
+        dz.classList.add('error');
+        return;
+      }
+
+      const parsed = Papa.parse(e.target.result, { header: true, skipEmptyLines: true, dynamicTyping: false });
+      if (!parsed.data || parsed.data.length === 0) {
+        error.style.display = 'block';
+        errMsgEl.textContent = 'The CSV file appears to be empty or could not be parsed.';
+        dz.classList.add('error');
+        return;
+      }
+
+      const ds = analyseCSV(parsed);
+      if (typeof saveDataset === 'function') saveDataset(ds);
+      sessionStorage.setItem('healthai_dataSource', 'upload');
+      if (typeof saveSchemaOK === 'function') saveSchemaOK(false);
+
+      dz.classList.add('has-file');
+      status.style.display = 'block';
+      msgEl.textContent = `✓ "${file.name}" loaded — ${ds.rows.toLocaleString()} patients, ${ds.columns.length} columns detected.`;
+
+      if (typeof renderDataset === 'function') renderDataset(ds);
+      if (typeof updateSchemaBanner === 'function') updateSchemaBanner();
+      if (typeof initStep3UI === 'function') initStep3UI();
+    } catch (err) {
+      error.style.display = 'block';
+      errMsgEl.textContent = err && err.message ? err.message : 'Could not parse the CSV file.';
+      dz.classList.add('error');
+    }
+  };
+
+  reader.onerror = function () {
+    error.style.display = 'block';
+    errMsgEl.textContent = 'Could not read the file. Please try again.';
+    dz.classList.add('error');
+  };
+  reader.readAsText(file);
 }
 
 // ── COLUMN MAPPER MODAL ───────────────────────────────────────────
