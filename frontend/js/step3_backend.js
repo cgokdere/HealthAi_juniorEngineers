@@ -45,6 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+/**
+ * initStep3UI function.
+ * @returns {*} Function result.
+ */
 function initStep3UI() {
     const ds = loadDataset();
     if (!ds) return; // Not reached step 2 yet
@@ -54,6 +58,10 @@ function initStep3UI() {
     const splitHint = document.getElementById('splitHint');
 
     // Default 80% split
+    /**
+     * updateHint function.
+     * @returns {*} Function result.
+     */
     const updateHint = () => {
         let pct = parseInt(slider.value, 10);
         splitVal.textContent = pct + '%';
@@ -64,6 +72,10 @@ function initStep3UI() {
         }
     };
 
+    /**
+     * onSettingChanged function.
+     * @returns {*} Function result.
+     */
     const onSettingChanged = () => {
         window.step3Complete = false;
         sessionStorage.setItem('healthai_prep_visible', 'false');
@@ -125,6 +137,12 @@ function initStep3UI() {
     }
 }
 
+/**
+ * updateHintsWarning function.
+ *
+ * @param {*} ds - Function parameter.
+ * @returns {*} Function result.
+ */
 function updateHintsWarning(ds) {
     if (!ds) return;
     const missingWrap = document.getElementById('missingDropdownWrap');
@@ -141,6 +159,7 @@ function updateHintsWarning(ds) {
     const smoteWrap = document.getElementById('smoteDropdownWrap');
     const smoteMsg = document.getElementById('smoteBalancedMsg');
     const smoteSel = document.getElementById('smoteSelect');
+    const smoteHint = document.getElementById('smoteHint');
     const isBalanced = !ds.imbalanceRatio || ds.imbalanceRatio <= 1.25;
     if (smoteWrap) smoteWrap.style.display = isBalanced ? 'none' : 'block';
     if (smoteMsg) smoteMsg.style.display = isBalanced ? 'block' : 'none';
@@ -157,6 +176,10 @@ function updateHintsWarning(ds) {
     }
 }
 
+/**
+ * onApplyPreparation function.
+ * @returns {*} Function result.
+ */
 async function onApplyPreparation() {
     const ds = loadDataset();
     if (!ds || !ds.rawRows || ds.rawRows.length === 0) {
@@ -318,6 +341,12 @@ async function onApplyPreparation() {
 }
 
 // Memory persistence
+/**
+ * compressRows function.
+ *
+ * @param {*} rows - Function parameter.
+ * @returns {*} Function result.
+ */
 function compressRows(rows) {
     if (!rows || rows.length === 0) return rows;
     const columns = Object.keys(rows[0]);
@@ -325,6 +354,12 @@ function compressRows(rows) {
     return { columns, data, __isCompressed: true };
 }
 
+/**
+ * decompressRows function.
+ *
+ * @param {*} compressed - Function parameter.
+ * @returns {*} Function result.
+ */
 function decompressRows(compressed) {
     if (!compressed || !compressed.__isCompressed) return compressed;
     const { columns, data } = compressed;
@@ -335,6 +370,12 @@ function decompressRows(compressed) {
     });
 }
 
+/**
+ * savePreprocessedData function.
+ *
+ * @param {*} data - Function parameter.
+ * @returns {*} Function result.
+ */
 function savePreprocessedData(data) {
     try {
         // Compress the rows to prevent QuotaExceededError
@@ -350,6 +391,10 @@ function savePreprocessedData(data) {
     }
 }
 
+/**
+ * loadPreprocessedData function.
+ * @returns {*} Function result.
+ */
 function loadPreprocessedData() {
     try {
         const d = sessionStorage.getItem('healthai_preprocessed');
@@ -362,6 +407,10 @@ function loadPreprocessedData() {
     } catch (e) { return null; }
 }
 
+/**
+ * resetTransformStatsPlaceholder function.
+ * @returns {*} Function result.
+ */
 function resetTransformStatsPlaceholder() {
     const grid2s = document.querySelectorAll('#step-3 .grid2');
     if (!grid2s || grid2s.length === 0) return;
@@ -395,6 +444,15 @@ function resetTransformStatsPlaceholder() {
     });
 }
 
+/**
+ * renderTransformStats function.
+ *
+ * @param {*} before - Function parameter.
+ * @param {*} after - Function parameter.
+ * @param {*} columns - Function parameter.
+ * @param {*} opts - Function parameter.
+ * @returns {*} Function result.
+ */
 function renderTransformStats(before, after, columns, opts) {
     opts = opts || {};
     const normLabel = opts.normalisation === 'none' ? 'AFTER (imputed only)' : 'AFTER (normalised)';
@@ -493,6 +551,10 @@ function renderTransformStats(before, after, columns, opts) {
     `;
 }
 
+/**
+ * onDetectOutliers function.
+ * @returns {*} Function result.
+ */
 async function onDetectOutliers() {
     const ds = loadDataset();
     if (!ds || !ds.rawRows || ds.rawRows.length === 0) {
@@ -510,6 +572,12 @@ async function onDetectOutliers() {
     btn.innerHTML = '⏳ Scanning Data...';
     btn.disabled = true;
 
+    /**
+     * renderOutlierRateWarning function.
+     *
+     * @param {*} percentage - Function parameter.
+     * @returns {*} Function result.
+     */
     const renderOutlierRateWarning = (percentage) => {
         const outlierChoice = document.querySelector('#outlierResultsArea .outlier-choice');
         if (!outlierChoice) return;
