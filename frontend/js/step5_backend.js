@@ -2,6 +2,10 @@ window.activeStep5Model = null;
 window.currentStep5Rows = [];
 window.currentStep = window.currentStep || 1;
 
+/**
+ * renderStep5Pills function.
+ * @returns {*} Function result.
+ */
 function renderStep5Pills() {
   const wrapper = document.getElementById('step5ModelPillsWrapper');
   const container = document.getElementById('step5ModelPills');
@@ -46,6 +50,13 @@ function renderStep5Pills() {
   });
 }
 
+/**
+ * renderStep5Metrics function.
+ *
+ * @param {*} bestRows - Function parameter.
+ * @param {*} skipPillsRender - Function parameter.
+ * @returns {*} Function result.
+ */
 function renderStep5Metrics(bestRows, skipPillsRender = false) {
   window.currentStep5Rows = bestRows;
   if (!skipPillsRender) {

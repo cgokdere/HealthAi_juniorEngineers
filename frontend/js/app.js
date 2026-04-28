@@ -9,6 +9,10 @@ const screens = [...document.querySelectorAll('.screen')];
 var stepNames = { 1: 'Clinical Context', 2: 'Data Exploration', 3: 'Data Preparation', 4: 'Model & Parameters', 5: 'Results', 6: 'Explainability', 7: 'Ethics & Bias' };
 
 // ── GLOBAL POPUP (used for navigation / blocking errors) ──────────
+/**
+ * ensureGlobalPopup function.
+ * @returns {*} Function result.
+ */
 function ensureGlobalPopup() {
   if (document.getElementById('globalPopupOverlay')) return;
   const overlay = document.createElement('div');
@@ -43,12 +47,22 @@ function ensureGlobalPopup() {
   document.body.appendChild(overlay);
 }
 
+/**
+ * closeGlobalPopup function.
+ * @returns {*} Function result.
+ */
 function closeGlobalPopup() {
   const overlay = document.getElementById('globalPopupOverlay');
   if (!overlay) return;
   overlay.classList.remove('open');
 }
 
+/**
+ * showGlobalPopup function.
+ *
+ * @param {*} opts - Function parameter.
+ * @returns {*} Function result.
+ */
 function showGlobalPopup(opts) {
   ensureGlobalPopup();
   const overlay = document.getElementById('globalPopupOverlay');
@@ -77,6 +91,12 @@ function showGlobalPopup(opts) {
   // focus OK for keyboard users
   setTimeout(() => overlay.querySelector('#globalPopupOk')?.focus(), 0);
 }
+/**
+ * showStep function.
+ *
+ * @param {*} n - Function parameter.
+ * @returns {*} Function result.
+ */
 function showStep(n) {
   currentStep = n;
   window.currentStep = n;
@@ -151,6 +171,12 @@ function showStep(n) {
   }
 }
 
+/**
+ * gate function.
+ *
+ * @param {*} n - Function parameter.
+ * @returns {*} Function result.
+ */
 function gate(n) {
   if (typeof isSchemaOK === 'function') {
     schemaOK = isSchemaOK();
@@ -306,6 +332,10 @@ const domainDesc = {
   'Cardiology — Stroke': 'stratify stroke risk — to support prevention and targeted follow-up.',
 };
 
+/**
+ * syncDomainSelectDisplay function.
+ * @returns {*} Function result.
+ */
 function syncDomainSelectDisplay() {
   const sel = document.getElementById('domainSelect');
   if (!sel) return;
@@ -318,12 +348,24 @@ function syncDomainSelectDisplay() {
   });
 }
 
+/**
+ * setActiveDomainPill function.
+ *
+ * @param {*} d - Function parameter.
+ * @returns {*} Function result.
+ */
 function setActiveDomainPill(d) {
   document.querySelectorAll('.domain-pill').forEach(p => {
     p.classList.toggle('active', p.dataset.domain === d);
   });
 }
 
+/**
+ * applyDomainToUI function.
+ *
+ * @param {*} d - Function parameter.
+ * @returns {*} Function result.
+ */
 function applyDomainToUI(d) {
   document.getElementById('domainLabel').textContent = d;
   const step1Domain = document.getElementById('step1-domain');
@@ -344,6 +386,10 @@ if (domainSelect) {
     const d = this.value;
     const prevDomain = document.getElementById('domainLabel').textContent;
     if (d === prevDomain) return;
+    /**
+     * doSwitch function.
+     * @returns {*} Function result.
+     */
     const doSwitch = () => {
       schemaOK = false;
       try {
@@ -377,6 +423,10 @@ document.querySelectorAll('.domain-pill').forEach(pill => {
     const d = this.dataset.domain;
     const prevDomain = document.getElementById('domainLabel').textContent;
     if (d === prevDomain) return;
+    /**
+     * doSwitch function.
+     * @returns {*} Function result.
+     */
     const doSwitch = () => {
       schemaOK = false;
       try {
@@ -441,6 +491,12 @@ dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
 dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag'); handleFile(e.dataTransfer.files[0]); });
 document.getElementById('csvInput').addEventListener('change', e => handleFile(e.target.files[0]));
 
+/**
+ * handleFile function.
+ *
+ * @param {*} file - Function parameter.
+ * @returns {*} Function result.
+ */
 function handleFile(file) {
   const status = document.getElementById('uploadStatus');
   const error = document.getElementById('uploadError');
@@ -549,6 +605,10 @@ document.getElementById('validateSchema').addEventListener('click', () => {
   }
 });
 
+/**
+ * markSchemaSaved function.
+ * @returns {*} Function result.
+ */
 function markSchemaSaved() {
   // Must validate before saving
   if (typeof validateMapper === 'function') {
@@ -599,6 +659,12 @@ const _paramP = { knn: 'params-knn', svm: 'params-svm', dt: 'params-dt', rf: 'pa
 const _vizP = { knn: 'viz-knn', svm: 'viz-svm', dt: 'viz-dt', rf: 'viz-rf', lr: 'viz-lr', nb: 'viz-nb' };
 let _activeAlgo = 'knn';
 
+/**
+ * _showAlgo function.
+ *
+ * @param {*} m - Function parameter.
+ * @returns {*} Function result.
+ */
 function _showAlgo(m) {
   _activeAlgo = m;
   document.querySelectorAll('.model-tab').forEach(t => t.classList.remove('active'));
@@ -615,9 +681,22 @@ document.querySelectorAll('.model-tab').forEach(tab => {
   tab.addEventListener('click', function () { _showAlgo(tab.dataset.model); });
 });
 
+/**
+ * _css function.
+ *
+ * @param {*} v - Function parameter.
+ * @returns {*} Function result.
+ */
 function _css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
 
 // Canvas helper: use actual rendered dimensions to avoid init stretch bug
+/**
+ * _sizeCanvas function.
+ *
+ * @param {*} canvas - Function parameter.
+ * @param {*} defaultH - Function parameter.
+ * @returns {*} Function result.
+ */
 function _sizeCanvas(canvas, defaultH) {
   var dpr = window.devicePixelRatio || 1;
   var W = canvas.offsetWidth;
@@ -632,13 +711,24 @@ function _sizeCanvas(canvas, defaultH) {
   return { ctx: ctx, W: W, H: H };
 }
 
-function _wireSlider(sid, vid, fmt, cb) {
+/**
+ * _wireSlider function.
+ *
+ * @param {*} sid - Function parameter.
+ * @param {*} vid - Function parameter.
+ * @param {*} fmt - Function parameter.
+ * @param {*} cb - Function parameter.
+ * @param {*} shouldRetrain - Function parameter.
+ * @returns {*} Function result.
+ */
+function _wireSlider(sid, vid, fmt, cb, shouldRetrain) {
   var s = document.getElementById(sid), v = document.getElementById(vid);
   if (!s) return;
+  var retrainEnabled = shouldRetrain !== false;
   s.addEventListener('input', function () {
     if (v) v.textContent = fmt ? fmt(+s.value) : s.value;
     if (cb) cb(+s.value);
-    triggerRetrain();
+    if (retrainEnabled) triggerRetrain();
     _redrawActive();
   });
 }
@@ -646,7 +736,7 @@ _wireSlider('splitSlider', 'splitVal', function (v) {
   var tr = Math.round(304 * v / 100), te = 304 - tr;
   var el = document.getElementById('splitHint'); if (el) el.textContent = 'Training: ' + tr + ' patients · Testing: ' + te + ' patients';
   return v + '%';
-});
+}, null, false);
 _wireSlider('knnK', 'knnKVal', null, function (v) { var l = document.getElementById('knnKVizLabel'); if (l) l.textContent = v; });
 _wireSlider('svmC', 'svmCVal', function (v) { return (Math.pow(10, (v - 5) / 2)).toFixed(2); });
 var _svmKEl = document.getElementById('svmKernel');
@@ -657,6 +747,10 @@ _wireSlider('rfDepth', 'rfDepthVal');
 _wireSlider('lrC', 'lrCVal', function (v) { return (Math.pow(10, (v - 5) / 2)).toFixed(2); });
 _wireSlider('lrIter', 'lrIterVal');
 
+/**
+ * _redrawActive function.
+ * @returns {*} Function result.
+ */
 function _redrawActive() {
   if (_activeAlgo === 'knn') _drawKNN();
   else if (_activeAlgo === 'svm') _drawSVM();
@@ -668,6 +762,10 @@ function _redrawActive() {
 
 // ── KNN: Dots + star always visible; K=0 shows base, K>0 highlights neighbors ──
 var _knnRAF, _knnCurR = 0, _knnInited = false;
+/**
+ * _drawKNN function.
+ * @returns {*} Function result.
+ */
 function _drawKNN() {
   var canvas = document.getElementById('knnCanvas'); if (!canvas) return;
   var c = _sizeCanvas(canvas, 240); var ctx = c.ctx, W = c.W, H = c.H;
@@ -687,6 +785,10 @@ function _drawKNN() {
   var targetR = k > 0 ? dists[k - 1].d * Math.min(W, H) : 0;
   if (!_knnInited) { _knnCurR = targetR; _knnInited = true; }
   if (_knnRAF) cancelAnimationFrame(_knnRAF);
+  /**
+   * frame function.
+   * @returns {*} Function result.
+   */
   function frame() {
     _knnCurR += (targetR - _knnCurR) * 0.14;
     ctx.clearRect(0, 0, W, H);
@@ -724,6 +826,10 @@ function _drawKNN() {
 
 // ── SVM: Scatter + decision boundary (linear/poly/RBF) with smooth transitions ──
 var _svmRAF, _svmT = 0, _svmAnimPrevC = -1, _svmAnimPrevK = '';
+/**
+ * _drawSVM function.
+ * @returns {*} Function result.
+ */
 function _drawSVM() {
   var canvas = document.getElementById('svmCanvas'); if (!canvas) return;
   var C = +(document.getElementById('svmC').value || 5);
@@ -738,12 +844,22 @@ function _drawSVM() {
   var cVal = Math.pow(10, (Math.max(1, Math.min(10, C)) - 5) / 2);
   var margin = Math.max(0.03, Math.min(0.25, 0.22 - (C / 10) * 0.14));
   if (_svmRAF) cancelAnimationFrame(_svmRAF);
+  /**
+   * frame function.
+   * @returns {*} Function result.
+   */
   function frame() {
     _svmT += (1 - _svmT) * 0.08;
     ctx.clearRect(0, 0, W, H);
     var gR = ctx.createLinearGradient(0, 0, W, 0);
     gR.addColorStop(0, 'rgba(220,38,38,.06)'); gR.addColorStop(.48, 'rgba(220,38,38,.02)'); gR.addColorStop(.52, 'rgba(22,163,74,.02)'); gR.addColorStop(1, 'rgba(22,163,74,.06)');
     ctx.fillStyle = gR; ctx.fillRect(0, 0, W, H);
+    /**
+     * drawBoundary function.
+     *
+     * @param {*} t - Function parameter.
+     * @returns {*} Function result.
+     */
     function drawBoundary(t) {
       ctx.beginPath();
       if (kernel === 'linear') {
@@ -766,6 +882,13 @@ function _drawSVM() {
     ctx.setLineDash([]); ctx.globalAlpha = 1;
     ctx.strokeStyle = cInk; ctx.lineWidth = 2.5;
     drawBoundary(0.4); ctx.stroke();
+    /**
+     * drawGrp function.
+     *
+     * @param {*} pts - Function parameter.
+     * @param {*} isRed - Function parameter.
+     * @returns {*} Function result.
+     */
     function drawGrp(pts, isRed) {
       pts.forEach(function (p) {
         var diagScore = isRed ? (p[0] + p[1] - 0.7) : ((1 - p[0]) + (1 - p[1]) - 0.7);
@@ -786,6 +909,10 @@ function _drawSVM() {
 
 // ── DECISION TREE: DOM-based expanding tree with smooth depth transitions ──
 var _dtPrevDepth = -1;
+/**
+ * _drawDT function.
+ * @returns {*} Function result.
+ */
 function _drawDT() {
   var wrap = document.getElementById('dtWrap'); if (!wrap) return;
   var depth = +(document.getElementById('dtDepth').value || 3);
@@ -793,6 +920,13 @@ function _drawDT() {
   var wv = document.getElementById('dtWarnVal'); if (wv) wv.textContent = depth;
   var qs = ['EF < 38%?', 'Age ≥ 65?', 'Creatinine > 1.5?', 'Smoker?', 'BP > 140?', 'Prior admission?'];
   var limit = Math.min(Math.max(1, depth), 6);
+  /**
+   * node function.
+   *
+   * @param {*} lvl - Function parameter.
+   * @param {*} left - Function parameter.
+   * @returns {*} Function result.
+   */
   function node(lvl, left) {
     if (lvl > limit) return '';
     var q = qs[(lvl - 1) % qs.length];
@@ -822,6 +956,10 @@ function _drawDT() {
 
 // ── RANDOM FOREST: Animated vote bar chart that updates with tree count ──
 // Visual logic: more trees = vote percentages converge to stable estimate
+/**
+ * _drawRF function.
+ * @returns {*} Function result.
+ */
 function _drawRF() {
   var wrap = document.getElementById('voteTrees'); if (!wrap) return;
   var count = +(document.getElementById('rfTrees').value || 100);
@@ -861,6 +999,10 @@ function _drawRF() {
 
 // ── LR: S-curve + live patient dot; C=steepness, iterations shown ──
 var _lrRAF, _lrSteep = 0.4;
+/**
+ * _drawLR function.
+ * @returns {*} Function result.
+ */
 function _drawLR() {
   var canvas = document.getElementById('lrCanvas'); if (!canvas) return;
   var C = +(document.getElementById('lrC').value || 5);
@@ -873,6 +1015,10 @@ function _drawLR() {
   var cText = _css('--text-primary') || cInk;
   var cBad = _css('--bad') || '#dc2626', cGood = _css('--good') || '#16a34a';
   if (_lrRAF) cancelAnimationFrame(_lrRAF);
+  /**
+   * frame function.
+   * @returns {*} Function result.
+   */
   function frame() {
     _lrSteep += (targetSteep - _lrSteep) * 0.12;
     ctx.clearRect(0, 0, W, H);
@@ -902,6 +1048,12 @@ function _drawLR() {
     // Gradient under S-curve
     var grad = ctx.createLinearGradient(0, m, 0, H - m);
     grad.addColorStop(0, 'rgba(220,38,38,.18)'); grad.addColorStop(.5, 'rgba(150,150,150,.04)'); grad.addColorStop(1, 'rgba(22,163,74,.12)');
+    /**
+     * sig function.
+     *
+     * @param {*} t - Function parameter.
+     * @returns {*} Function result.
+     */
     function sig(t) { return 1 / (1 + Math.exp(-_lrSteep * t)); }
     ctx.beginPath();
     for (var i = 0; i <= 100; i++) { var t = i / 100 * 10 - 5, p = sig(t); if (i === 0) ctx.moveTo(m + i / 100 * pw, m + ph * (1 - p)); else ctx.lineTo(m + i / 100 * pw, m + ph * (1 - p)); }
@@ -943,6 +1095,10 @@ var _NB = [
   { n: 'Sodium = 136', val: 45, dir: -1, imp: 'Normal sodium slightly reduces risk' },
   { n: 'Non-smoker', val: 29, dir: -1, imp: 'Not smoking significantly reduces risk' },
 ];
+/**
+ * _drawNB function.
+ * @returns {*} Function result.
+ */
 function _drawNB() {
   var wrap = document.getElementById('nbBars'); if (!wrap) return;
   // Combined probability: naive formula P(R|all) ∝ ∏P(x|R)/∏P(x|S)
@@ -982,6 +1138,10 @@ window.addEventListener('resize', function () { clearTimeout(window._p8T); windo
 // ── AUTO-RETRAIN SIMULATION ───────────────────────────────────────
 // ── AUTO-RETRAIN SIMULATION ───────────────────────────────────────
 let retrainTimer;
+/**
+ * triggerRetrain function.
+ * @returns {*} Function result.
+ */
 function triggerRetrain() {
   if (!document.getElementById('autoRetrain')?.checked) return;
   const activeModel = document.querySelector('.model-tab.active')?.dataset.model || 'knn';
@@ -1003,6 +1163,12 @@ function triggerRetrain() {
   }, 900);
 }
 
+/**
+ * doRealTraining function.
+ *
+ * @param {*} activeModel - Function parameter.
+ * @returns {*} Function result.
+ */
 async function doRealTraining(activeModel) {
   const ts = document.getElementById('trainingStatus');
   const tm = document.getElementById('trainingMsg');
@@ -1037,6 +1203,12 @@ async function doRealTraining(activeModel) {
     prepData = rawStorageStr ? JSON.parse(rawStorageStr) : null;
   } catch (e) { }
 
+  /**
+   * decompressRowsLocal function.
+   *
+   * @param {*} compressed - Function parameter.
+   * @returns {*} Function result.
+   */
   const decompressRowsLocal = (compressed) => {
     if (!compressed || !compressed.__isCompressed) return compressed;
     const { columns, data } = compressed;
@@ -1171,6 +1343,12 @@ document.getElementById('trainBtn').addEventListener('click', () => {
 });
 
 document.getElementById('addCompare').addEventListener('click', () => {
+  /**
+   * showWarningBanner function.
+   *
+   * @param {*} msg - Function parameter.
+   * @returns {*} Function result.
+   */
   function showWarningBanner(msg) {
     let warnDiv = document.getElementById('compareWarningBanner');
     if (!warnDiv) {
@@ -1235,6 +1413,10 @@ document.getElementById('addCompare').addEventListener('click', () => {
 });
 
 // ── ETHICS CHECKLIST ──────────────────────────────────────────────
+/**
+ * updateChecklistProgress function.
+ * @returns {*} Function result.
+ */
 function updateChecklistProgress() {
   const checklist = document.getElementById('euChecklist');
   if (!checklist) return;
@@ -1263,6 +1445,12 @@ function updateChecklistProgress() {
    `;
 }
 
+/**
+ * toggleCheck function.
+ *
+ * @param {*} el - Function parameter.
+ * @returns {*} Function result.
+ */
 function toggleCheck(el) {
   el.classList.toggle('checked');
   const box = el.querySelector('.check-box');
@@ -1273,6 +1461,12 @@ window.toggleCheck = toggleCheck;
 
 // ── STEP 6: Clinical display names & labels (charts + waterfall) ────────
 
+/**
+ * escapeHtmlStep6 function.
+ *
+ * @param {*} s - Function parameter.
+ * @returns {*} Function result.
+ */
 function escapeHtmlStep6(s) {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -1281,18 +1475,36 @@ function escapeHtmlStep6(s) {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * riskTierFromPercent function.
+ *
+ * @param {*} pct - Function parameter.
+ * @returns {*} Function result.
+ */
 function riskTierFromPercent(pct) {
   if (pct >= 65) return 'High Risk';
   if (pct >= 35) return 'Moderate Risk';
   return 'Low Risk';
 }
 
+/**
+ * patientLetterFromIndex function.
+ *
+ * @param {*} idx - Function parameter.
+ * @returns {*} Function result.
+ */
 function patientLetterFromIndex(idx) {
   const i = 0 | idx;
   if (i < 0 || i > 25) return '?';
   return String.fromCharCode(65 + i);
 }
 
+/**
+ * parseClinicalNum function.
+ *
+ * @param {*} rawValue - Function parameter.
+ * @returns {*} Function result.
+ */
 function parseClinicalNum(rawValue) {
   if (rawValue === undefined || rawValue === null || rawValue === '') return null;
   if (typeof rawValue === 'boolean') return rawValue ? 1 : 0;
@@ -1302,6 +1514,12 @@ function parseClinicalNum(rawValue) {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * fmtClinicalDisplay function.
+ *
+ * @param {*} val - Function parameter.
+ * @returns {*} Function result.
+ */
 function fmtClinicalDisplay(val) {
   if (val === undefined || val === null || val === '') return 'N/A';
   if (typeof val === 'number') {
@@ -1649,6 +1867,12 @@ const clinicalNames = {
   Attribute5: 'Thyroid Clinical Parameter 5'
 };
 
+/**
+ * getClinicalName function.
+ *
+ * @param {*} rawName - Function parameter.
+ * @returns {*} Function result.
+ */
 function getClinicalName(rawName) {
   if (rawName == null || rawName === '') return '';
   const key = String(rawName);
@@ -1677,6 +1901,13 @@ function getClinicalName(rawName) {
   return key;
 }
 
+/**
+ * clinicalLabel function.
+ *
+ * @param {*} feature - Function parameter.
+ * @param {*} rawValue - Function parameter.
+ * @returns {*} Function result.
+ */
 function clinicalLabel(feature, rawValue) {
   const fk = String(feature);
   const display = getClinicalName(feature);
@@ -1909,6 +2140,10 @@ function clinicalLabel(feature, rawValue) {
 // ── STEP 6: Patient explanation (update on select) ───────────────────
 var _patientData = {};
 
+/**
+ * updatePatientExplanation function.
+ * @returns {*} Function result.
+ */
 function updatePatientExplanation() {
   var sel = document.getElementById('caseSelect');
   var titleEl = document.getElementById('patientExplainTitle');
@@ -1936,6 +2171,10 @@ function updatePatientExplanation() {
   }
 }
 
+/**
+ * resolveExplainModelKey function.
+ * @returns {*} Function result.
+ */
 function resolveExplainModelKey() {
   try {
     const reg = JSON.parse(sessionStorage.getItem('healthai_explain_registry') || '{}');
@@ -1954,6 +2193,10 @@ function resolveExplainModelKey() {
   }
 }
 
+/**
+ * updatePatientExplanationFromModel function.
+ * @returns {*} Function result.
+ */
 function updatePatientExplanationFromModel() {
   try {
     const modelKey = resolveExplainModelKey();
@@ -1965,6 +2208,12 @@ function updatePatientExplanationFromModel() {
     _patientData = {};
     let selHtml = '';
 
+    /**
+     * formatVal function.
+     *
+     * @param {*} v - Function parameter.
+     * @returns {*} Function result.
+     */
     const formatVal = function (v) {
       if (v === undefined || v === null || v === '') return 'N/A';
       if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
@@ -2032,6 +2281,10 @@ function updatePatientExplanationFromModel() {
 document.getElementById('explainPatientBtn')?.addEventListener('click', updatePatientExplanation);
 
 // ── DOWNLOAD SUMMARY CERTIFICATE ───────────────────────────────────
+/**
+ * openDownloadSummary function.
+ * @returns {*} Function result.
+ */
 async function openDownloadSummary() {
   const domain = document.getElementById('domainLabel')?.textContent || 'Cardiology';
   const checklist = document.querySelectorAll('#euChecklist .check-item');
@@ -2208,6 +2461,15 @@ const customConfirmOverlay = document.getElementById('customConfirmOverlay');
 const customConfirmTitle = document.getElementById('customConfirmTitle');
 const customConfirmMessage = document.getElementById('customConfirmMessage');
 
+/**
+ * elegantConfirm function.
+ *
+ * @param {*} title - Function parameter.
+ * @param {*} message - Function parameter.
+ * @param {*} onOk - Function parameter.
+ * @param {*} onCancel - Function parameter.
+ * @returns {*} Function result.
+ */
 function elegantConfirm(title, message, onOk, onCancel) {
   customConfirmTitle.textContent = title;
   customConfirmMessage.textContent = message;
@@ -2248,6 +2510,10 @@ if (ts) {
 
 
 // ── PREMIUM CUSTOM SELECT DROPDOWNS ──────────────────────────────────────
+/**
+ * initPremiumDropdowns function.
+ * @returns {*} Function result.
+ */
 function initPremiumDropdowns() {
   const selects = document.querySelectorAll('select.sel, select.theme-selector');
   selects.forEach(select => {
@@ -2328,6 +2594,12 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
 // ── PHASE 8: ALGORITHM VISUALIZATIONS ─────────────────────────────
 (function () {
   // Helper: read CSS variable value
+  /**
+   * cssVar function.
+   *
+   * @param {*} name - Function parameter.
+   * @returns {*} Function result.
+   */
   function cssVar(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
   }
@@ -2366,6 +2638,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
     });
   });
 
+  /**
+   * redraw function.
+   * @returns {*} Function result.
+   */
   function redraw() {
     if (activeModel === 'knn') drawKNN();
     else if (activeModel === 'svm') drawSVM();
@@ -2376,6 +2652,15 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
   }
 
   // ── SLIDER WIRING ────────────────────────────────────────────────
+  /**
+   * wire function.
+   *
+   * @param {*} id - Function parameter.
+   * @param {*} valId - Function parameter.
+   * @param {*} fmt - Function parameter.
+   * @param {*} cb - Function parameter.
+   * @returns {*} Function result.
+   */
   function wire(id, valId, fmt, cb) {
     const s = document.getElementById(id), v = document.getElementById(valId);
     if (!s) return;
@@ -2413,6 +2698,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
   // ── KNN ─────────────────────────────────────────────────────────
   let knnRAF;
   let knnCurR = 0;
+  /**
+   * drawKNN function.
+   * @returns {*} Function result.
+   */
   function drawKNN() {
     const canvas = document.getElementById('knnCanvas');
     if (!canvas) return;
@@ -2445,6 +2734,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
 
     if (knnRAF) cancelAnimationFrame(knnRAF);
 
+    /**
+     * frame function.
+     * @returns {*} Function result.
+     */
     function frame() {
       knnCurR += (targetR - knnCurR) * 0.12;
       ctx.clearRect(0, 0, W, H);
@@ -2495,6 +2788,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
 
   // ── SVM ─────────────────────────────────────────────────────────
   let svmRAF; let svmAnim = 0; let svmPrevK = '';
+  /**
+   * drawSVM function.
+   * @returns {*} Function result.
+   */
   function drawSVM() {
     const canvas = document.getElementById('svmCanvas');
     if (!canvas) return;
@@ -2516,6 +2813,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
     const grnPts = [[.72, .28], [.77, .22], [.82, .33], [.66, .18], [.87, .38], [.74, .24], [.62, .10]];
 
     if (svmRAF) cancelAnimationFrame(svmRAF);
+    /**
+     * frame function.
+     * @returns {*} Function result.
+     */
     function frame() {
       svmAnim += (1 - svmAnim) * 0.1;
       ctx.clearRect(0, 0, W, H);
@@ -2571,6 +2872,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
   }
 
   // ── DECISION TREE ───────────────────────────────────────────────
+  /**
+   * drawDT function.
+   * @returns {*} Function result.
+   */
   function drawDT() {
     const wrap = document.getElementById('dtWrap');
     if (!wrap) return;
@@ -2579,6 +2884,13 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
     const questions = ['EF < 38%?', 'Age > 65?', 'Creat > 1.5?', 'Smoker?', 'BP > 140?'];
     const limit = Math.min(depth, 5);
 
+    /**
+     * makeNode function.
+     *
+     * @param {*} level - Function parameter.
+     * @param {*} isLeftChild - Function parameter.
+     * @returns {*} Function result.
+     */
     function makeNode(level, isLeftChild) {
       if (level > limit) return '';
       const isLeaf = level === limit;
@@ -2613,6 +2925,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
   }
 
   // ── RANDOM FOREST ──────────────────────────────────────────────
+  /**
+   * drawRF function.
+   * @returns {*} Function result.
+   */
   function drawRF() {
     const wrap = document.getElementById('voteTrees');
     if (!wrap) return;
@@ -2657,6 +2973,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
 
   // ── LOGISTIC REGRESSION ─────────────────────────────────────────
   let lrRAF; let lrCur = 0.75;
+  /**
+   * drawLR function.
+   * @returns {*} Function result.
+   */
   function drawLR() {
     const canvas = document.getElementById('lrCanvas');
     if (!canvas) return;
@@ -2673,6 +2993,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
 
     if (lrRAF) cancelAnimationFrame(lrRAF);
     const target = steepness;
+    /**
+     * frame function.
+     * @returns {*} Function result.
+     */
     function frame() {
       lrCur += (target - lrCur) * 0.12;
       ctx.clearRect(0, 0, W, H);
@@ -2735,6 +3059,10 @@ document.getElementById('openMapper')?.addEventListener('click', () => { setTime
     { name: 'Non-smoker', val: 28, pct: 28, cls: 'dec', impact: '-5% risk decrease' },
   ];
 
+  /**
+   * drawNB function.
+   * @returns {*} Function result.
+   */
   function drawNB() {
     const wrap = document.getElementById('nbBars');
     if (!wrap) return;
@@ -2827,6 +3155,10 @@ btnCStandard?.addEventListener('click', () => {
 });
 
 // ── AUTO-RETRAIN STATUS TEXT ──────────────────────────────────────
+/**
+ * updateAutoRetrainText function.
+ * @returns {*} Function result.
+ */
 function updateAutoRetrainText() {
   const checkbox = document.getElementById('autoRetrain');
   const statusText = document.getElementById('autoRetrainStatusText');
@@ -2855,6 +3187,13 @@ document.addEventListener('DOMContentLoaded', updateAutoRetrainText);
 setTimeout(updateAutoRetrainText, 100);
 
 // ── STEP 6: FEATURE IMPORTANCE PIPELINE INTEGRATION ───────────────────
+/**
+ * renderFeatureImportanceChart function.
+ *
+ * @param {*} containerId - Function parameter.
+ * @param {*} rawData - Function parameter.
+ * @returns {*} Function result.
+ */
 function renderFeatureImportanceChart(containerId, rawData) {
   const maxVal = Math.max(...rawData.map(d => d.importance));
   const minVal = Math.min(...rawData.map(d => d.importance));
@@ -2897,6 +3236,10 @@ function renderFeatureImportanceChart(containerId, rawData) {
   container.innerHTML = `<div class="bars" style="margin-top:20px; display:flex; flex-direction:column; gap:12px;">${barsHtml}</div>`;
 }
 
+/**
+ * renderCorrelationHeatmap function.
+ * @returns {*} Function result.
+ */
 function renderCorrelationHeatmap() {
   const container = document.getElementById('correlationHeatmapContainer');
   if (!container) return;
@@ -2920,10 +3263,22 @@ function renderCorrelationHeatmap() {
   const cellSize = n <= 10 ? 44 : n <= 15 ? 32 : 24;
   const fontSize = n <= 10 ? 11 : n <= 15 ? 9 : 7;
 
+  /**
+   * fmtLabel function.
+   *
+   * @param {*} col - Function parameter.
+   * @returns {*} Function result.
+   */
   function fmtLabel(col) {
     return col.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
+  /**
+   * getColor function.
+   *
+   * @param {*} val - Function parameter.
+   * @returns {*} Function result.
+   */
   function getColor(val) {
     if (val >= 0) {
       const t = val;
@@ -2995,7 +3350,19 @@ function renderCorrelationHeatmap() {
 
   let interp = '';
   if (top.length > 0) {
+    /**
+     * str function.
+     *
+     * @param {*} v - Function parameter.
+     * @returns {*} Function result.
+     */
     const str = v => v >= 0.7 ? 'strong' : v >= 0.4 ? 'moderate' : 'weak';
+    /**
+     * dir function.
+     *
+     * @param {*} v - Function parameter.
+     * @returns {*} Function result.
+     */
     const dir = v => v >= 0 ? 'positive' : 'negative';
     interp = top.map(p => `<b>${fmtLabel(p.a)}</b> and <b>${fmtLabel(p.b)}</b> show a ${str(p.abs)} ${dir(p.val)} correlation (${p.val.toFixed(3)}).`).join(' ');
     interp += ' Features with correlations close to 0 contribute independent information to the model.';
@@ -3008,6 +3375,10 @@ function renderCorrelationHeatmap() {
   container.innerHTML = html;
 }
 
+/**
+ * renderStep6 function.
+ * @returns {*} Function result.
+ */
 function renderStep6() {
   let step6DataPayload = [];
   let explain = null;
@@ -3074,10 +3445,24 @@ window.HEALTHAI_REFERENCE_POPULATION = {
   ageBuckets: { '18-60': 54, '61-75': 30, '76+': 16 }
 };
 
+/**
+ * _findColMeta function.
+ *
+ * @param {*} columns - Function parameter.
+ * @param {*} re - Function parameter.
+ * @returns {*} Function result.
+ */
 function _findColMeta(columns, re) {
   return columns.find(function (c) { return c && c.name && re.test(String(c.name)); });
 }
 
+/**
+ * _findRowKeyByRegex function.
+ *
+ * @param {*} rows - Function parameter.
+ * @param {*} re - Function parameter.
+ * @returns {*} Function result.
+ */
 function _findRowKeyByRegex(rows, re) {
   if (!rows || !rows.length || !rows[0]) return null;
   const keys = Object.keys(rows[0]);
@@ -3085,12 +3470,24 @@ function _findRowKeyByRegex(rows, re) {
   return hit || null;
 }
 
+/**
+ * _isAgeLikeKey function.
+ *
+ * @param {*} key - Function parameter.
+ * @returns {*} Function result.
+ */
 function _isAgeLikeKey(key) {
   const k = String(key || '').trim().toLowerCase();
   if (!k) return false;
   return k === 'age' || k === 'age_raw' || k === 'patient_age' || k === 'age_years' || k === 'age_year';
 }
 
+/**
+ * _isGenderLikeKey function.
+ *
+ * @param {*} key - Function parameter.
+ * @returns {*} Function result.
+ */
 function _isGenderLikeKey(key) {
   const k = String(key || '').trim().toLowerCase();
   if (!k) return false;
@@ -3099,6 +3496,12 @@ function _isGenderLikeKey(key) {
     || /^gender[_-]/.test(k) || /[_-]gender$/.test(k);
 }
 
+/**
+ * _findAgeRowKey function.
+ *
+ * @param {*} rows - Function parameter.
+ * @returns {*} Function result.
+ */
 function _findAgeRowKey(rows) {
   if (!rows || !rows.length || !rows[0]) return null;
   const keys = Object.keys(rows[0]);
@@ -3138,6 +3541,12 @@ function _findAgeRowKey(rows) {
   return bestScore >= 0.6 ? bestKey : null;
 }
 
+/**
+ * _findGenderRowKey function.
+ *
+ * @param {*} rows - Function parameter.
+ * @returns {*} Function result.
+ */
 function _findGenderRowKey(rows) {
   if (!rows || !rows.length || !rows[0]) return null;
   const keys = Object.keys(rows[0]);
@@ -3179,6 +3588,12 @@ function _findGenderRowKey(rows) {
   return bestScore >= 0.6 ? bestKey : null;
 }
 
+/**
+ * _parseAge function.
+ *
+ * @param {*} v - Function parameter.
+ * @returns {*} Function result.
+ */
 function _parseAge(v) {
   if (v === undefined || v === null || v === '') return null;
   let n = Number(v);
@@ -3193,6 +3608,12 @@ function _parseAge(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * _computeTrainingRep function.
+ *
+ * @param {*} trainRows - Function parameter.
+ * @returns {*} Function result.
+ */
 function _computeTrainingRep(trainRows) {
   const ref = window.HEALTHAI_REFERENCE_POPULATION;
   const out = { gender: null, age: null };
@@ -3271,6 +3692,12 @@ function _computeTrainingRep(trainRows) {
   return out;
 }
 
+/**
+ * _fairnessTagHtml function.
+ *
+ * @param {*} sens01 - Function parameter.
+ * @returns {*} Function result.
+ */
 function _fairnessTagHtml(sens01) {
   const pct = Math.round((sens01 || 0) * 100);
   let sensCls = pct >= 60 ? 'good' : (pct >= 50 ? 'warn' : 'bad');
@@ -3286,6 +3713,10 @@ function _fairnessTagHtml(sens01) {
   return { pct: pct, sensCls: sensCls, fairnessTag: fairnessTag, isBad: pct < 50 };
 }
 
+/**
+ * renderStep7Ethics function.
+ * @returns {*} Function result.
+ */
 function renderStep7Ethics() {
   try {
     const modelKey = resolveExplainModelKey();

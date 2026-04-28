@@ -25,6 +25,12 @@ const SS = {
 };
 
 // ── SAVE / LOAD SESSION ──────────────────────────────────────────
+/**
+ * compressRows function.
+ *
+ * @param {*} rows - Function parameter.
+ * @returns {*} Function result.
+ */
 function compressRows(rows) {
     if (!rows || rows.length === 0) return rows;
     const columns = Object.keys(rows[0]);
@@ -32,6 +38,12 @@ function compressRows(rows) {
     return { columns, data, __isCompressed: true };
 }
 
+/**
+ * decompressRows function.
+ *
+ * @param {*} compressed - Function parameter.
+ * @returns {*} Function result.
+ */
 function decompressRows(compressed) {
     if (!compressed || !compressed.__isCompressed) return compressed;
     const { columns, data } = compressed;
@@ -42,6 +54,12 @@ function decompressRows(compressed) {
     });
 }
 
+/**
+ * saveDataset function.
+ *
+ * @param {*} ds - Function parameter.
+ * @returns {*} Function result.
+ */
 function saveDataset(ds) {
   try {
     const dsToSave = { ...ds };
@@ -51,6 +69,10 @@ function saveDataset(ds) {
     console.warn('sessionStorage full', e); 
   }
 }
+/**
+ * loadDataset function.
+ * @returns {*} Function result.
+ */
 function loadDataset() {
   try { 
     const v = sessionStorage.getItem(SS.DATASET); 
@@ -63,35 +85,77 @@ function loadDataset() {
     return null; 
   }
 }
+/**
+ * saveSchemaOK function.
+ *
+ * @param {*} ok - Function parameter.
+ * @returns {*} Function result.
+ */
 function saveSchemaOK(ok) {
   try {
     if (ok) { sessionStorage.setItem(SS.SCHEMA_OK, '1'); localStorage.setItem('heathAI_schemaOK', '1'); }
     else { sessionStorage.removeItem(SS.SCHEMA_OK); localStorage.removeItem('heathAI_schemaOK'); }
   } catch (e) { }
 }
+/**
+ * isSchemaOK function.
+ * @returns {*} Function result.
+ */
 function isSchemaOK() {
   try { return sessionStorage.getItem(SS.SCHEMA_OK) === '1'; } catch (e) { return false; }
 }
+/**
+ * saveColumnRoles function.
+ *
+ * @param {*} roles - Function parameter.
+ * @returns {*} Function result.
+ */
 function saveColumnRoles(roles) {
   try { sessionStorage.setItem(SS.COLUMN_ROLES, JSON.stringify(roles)); } catch (e) { }
 }
+/**
+ * loadColumnRoles function.
+ * @returns {*} Function result.
+ */
 function loadColumnRoles() {
   try { const v = sessionStorage.getItem(SS.COLUMN_ROLES); return v ? JSON.parse(v) : {}; } catch (e) { return {}; }
 }
+/**
+ * saveTargetCol function.
+ *
+ * @param {*} col - Function parameter.
+ * @returns {*} Function result.
+ */
 function saveTargetCol(col) {
   try { sessionStorage.setItem(SS.TARGET_COL, col); } catch (e) { }
 }
+/**
+ * loadTargetCol function.
+ * @returns {*} Function result.
+ */
 function loadTargetCol() {
   try { return sessionStorage.getItem(SS.TARGET_COL) || ''; } catch (e) { return ''; }
 }
 
 // ── IDENTIFIER & TARGET HEURISTICS ───────────────────────────────
+/**
+ * _looksLikeId function.
+ *
+ * @param {*} name - Function parameter.
+ * @returns {*} Function result.
+ */
 function _looksLikeId(name) {
   const n = name.toLowerCase().replace(/[_\s\-]/g, '');
   const exact = ['id', 'pid', 'uid', 'sid', 'cid', 'rid', 'eid', 'mrn', 'ssn', 'nhs', 'accession'];
   return exact.includes(n) || n.endsWith('id');
 }
 
+/**
+ * _looksLikeTarget function.
+ *
+ * @param {*} name - Function parameter.
+ * @returns {*} Function result.
+ */
 function _looksLikeTarget(name) {
   const n = name.toLowerCase().replace(/[_\s\-]/g, '');
   const keywords = [
@@ -106,6 +170,12 @@ function _looksLikeTarget(name) {
 }
 
 // ── CSV ANALYSIS ─────────────────────────────────────────────────
+/**
+ * analyseCSV function.
+ *
+ * @param {*} parsedData - Function parameter.
+ * @returns {*} Function result.
+ */
 function analyseCSV(parsedData) {
   const fields = parsedData.meta.fields || [];
   const rows = parsedData.data.filter(r => Object.values(r).some(v => v !== '' && v !== null && v !== undefined));
@@ -213,6 +283,13 @@ function analyseCSV(parsedData) {
   };
 }
 
+/**
+ * computeClassBalance function.
+ *
+ * @param {*} rows - Function parameter.
+ * @param {*} targetColName - Function parameter.
+ * @returns {*} Function result.
+ */
 function computeClassBalance(rows, targetColName) {
   if (!targetColName) return null;
   const counts = {};
@@ -230,6 +307,12 @@ function computeClassBalance(rows, targetColName) {
   return result;
 }
 
+/**
+ * computeImbalanceRatio function.
+ *
+ * @param {*} balance - Function parameter.
+ * @returns {*} Function result.
+ */
 function computeImbalanceRatio(balance) {
   const pcts = Object.values(balance).map(b => b.pct);
   if (pcts.length < 2) return null;
@@ -237,6 +320,12 @@ function computeImbalanceRatio(balance) {
 }
 
 // ── UI RENDERING ─────────────────────────────────────────────────
+/**
+ * renderDataset function.
+ *
+ * @param {*} ds - Function parameter.
+ * @returns {*} Function result.
+ */
 function renderDataset(ds) {
   // 1. KPI summary
   const kpiPatients = document.getElementById('kpiPatients');
@@ -267,6 +356,12 @@ function renderDataset(ds) {
   // 6. dataResultsSection is always visible (display:flex in HTML)
 }
 
+/**
+ * renderClassBalance function.
+ *
+ * @param {*} ds - Function parameter.
+ * @returns {*} Function result.
+ */
 function renderClassBalance(ds) {
   const wrap = document.getElementById('classBalanceBars');
   const bannerWrap = document.getElementById('classBalanceBanner');
@@ -298,10 +393,22 @@ function renderClassBalance(ds) {
   }
 }
 
+/**
+ * renderFeaturesTable function.
+ *
+ * @param {*} ds - Function parameter.
+ * @returns {*} Function result.
+ */
 function renderFeaturesTable(ds) {
   const tbody = document.getElementById('featuresTableBody');
   if (!tbody) return;
 
+  /**
+   * actionTag function.
+   *
+   * @param {*} col - Function parameter.
+   * @returns {*} Function result.
+   */
   const actionTag = (col) => {
     if (col.role === 'ignore' || col.type === 'identifier')
       return '<span class="tag bad">Exclude — Not a measurement</span>';
@@ -314,6 +421,12 @@ function renderFeaturesTable(ds) {
     return '<span class="tag good">Ready</span>';
   };
 
+  /**
+   * typeLabel function.
+   *
+   * @param {*} col - Function parameter.
+   * @returns {*} Function result.
+   */
   const typeLabel = (col) => ({ numeric: 'Number', binary: `Binary (${col.uniqueCount} values)`, category: `Category (${col.uniqueCount})`, text: 'Text', identifier: 'Identifier' }[col.type] || col.type);
 
   tbody.innerHTML = ds.columns.map(col => `
@@ -328,6 +441,12 @@ function renderFeaturesTable(ds) {
 // ── SYNC CUSTOM DROPDOWN TEXT ────────────────────────────────────
 // After programmatically changing a <select>'s value, the custom
 // premium dropdown overlay won't update on its own — this forces it.
+/**
+ * _syncTargetSelUI function.
+ *
+ * @param {*} targetName - Function parameter.
+ * @returns {*} Function result.
+ */
 function _syncTargetSelUI(targetName) {
   const sel = document.getElementById('targetCol');
   if (!sel) return;
@@ -349,6 +468,12 @@ function _syncTargetSelUI(targetName) {
   }
 }
 
+/**
+ * renderTargetSelector function.
+ *
+ * @param {*} ds - Function parameter.
+ * @returns {*} Function result.
+ */
 function renderTargetSelector(ds) {
   const sel = document.getElementById('targetCol');
   if (!sel) return;
@@ -419,6 +544,12 @@ function renderTargetSelector(ds) {
 }
 
 // ── MAPPER POPULATION ────────────────────────────────────────────
+/**
+ * populateMapper function.
+ *
+ * @param {*} ds - Function parameter.
+ * @returns {*} Function result.
+ */
 function populateMapper(ds) {
   const tbody = document.getElementById('mapperTableBody');
   if (!tbody || !ds) return;
@@ -434,6 +565,14 @@ function populateMapper(ds) {
     }
   }
 
+  /**
+   * roleOptions function.
+   *
+   * @param {*} currentRole - Function parameter.
+   * @param {*} colName - Function parameter.
+   * @param {*} isTarget - Function parameter.
+   * @returns {*} Function result.
+   */
   const roleOptions = (currentRole, colName, isTarget) => {
     const roles = [
       { value: 'target', label: 'Target (what we predict)' },
@@ -446,6 +585,12 @@ function populateMapper(ds) {
     ).join('');
   };
 
+  /**
+   * typeTag function.
+   *
+   * @param {*} col - Function parameter.
+   * @returns {*} Function result.
+   */
   const typeTag = (col) => {
     if (col.type === 'identifier') return '<span class="tag bad">Identifier-like</span>';
     if (col.type === 'binary' && col.missingPct > 0) return `<span class="tag warn">Binary · ${col.missingPct}% missing</span>`;
@@ -585,6 +730,12 @@ function populateMapper(ds) {
   if (typeof initPremiumDropdowns === 'function') setTimeout(initPremiumDropdowns, 80);
 }
 
+/**
+ * onMapperRoleChange function.
+ *
+ * @param {*} sel - Function parameter.
+ * @returns {*} Function result.
+ */
 function onMapperRoleChange(sel) {
   const roles = loadColumnRoles();
   const ds = loadDataset();
@@ -652,6 +803,10 @@ function onMapperRoleChange(sel) {
 }
 
 // ── MAPPER VALIDATION ────────────────────────────────────────────
+/**
+ * validateMapper function.
+ * @returns {*} Function result.
+ */
 function validateMapper() {
   const ds = loadDataset();
   if (!ds) return { ok: false, msg: 'No dataset loaded.' };
@@ -783,6 +938,12 @@ document.addEventListener('DOMContentLoaded', function () {
   const _origSaveMapping = document.getElementById('saveMapping');
   const _origSaveAndClose = document.getElementById('saveAndClose');
 
+  /**
+   * _doSave function.
+   *
+   * @param {*} closeAfter - Function parameter.
+   * @returns {*} Function result.
+   */
   function _doSave(closeAfter) {
     // Require an explicit click on "Validate Schema" after opening the mapper.
     // (Even though we can validate programmatically, UX requirement is to force the user to press it.)
@@ -860,6 +1021,12 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // ── LOAD DEFAULT DATASET ─────────────────────────────────────────
+/**
+ * loadDefaultDataset function.
+ *
+ * @param {*} resetSchema - Function parameter.
+ * @returns {*} Function result.
+ */
 function loadDefaultDataset(resetSchema) {
   const domainName = getCurrentDomain();
   const meta = getDatasetForDomain(domainName);
@@ -955,6 +1122,12 @@ function loadDefaultDataset(resetSchema) {
 }
 
 // ── FILE HANDLER ─────────────────────────────────────────────────
+/**
+ * handleFile function.
+ *
+ * @param {*} file - Function parameter.
+ * @returns {*} Function result.
+ */
 function handleFile(file) {
   const statusEl = document.getElementById('uploadStatus');
   const errorEl = document.getElementById('uploadError');
@@ -1014,6 +1187,15 @@ function handleFile(file) {
   reader.readAsText(file);
 }
 
+/**
+ * showUploadError function.
+ *
+ * @param {*} msgEl - Function parameter.
+ * @param {*} errorEl - Function parameter.
+ * @param {*} dz - Function parameter.
+ * @param {*} msg - Function parameter.
+ * @returns {*} Function result.
+ */
 function showUploadError(msgEl, errorEl, dz, msg) {
   if (msgEl) msgEl.textContent = msg;
   if (errorEl) errorEl.style.display = 'block';
@@ -1021,6 +1203,10 @@ function showUploadError(msgEl, errorEl, dz, msg) {
 }
 
 // ── SCHEMA BANNER ────────────────────────────────────────────────
+/**
+ * updateSchemaBanner function.
+ * @returns {*} Function result.
+ */
 function updateSchemaBanner() {
   const ok = isSchemaOK();
   const banner = document.getElementById('schemaBanner');
@@ -1049,6 +1235,13 @@ function updateSchemaBanner() {
   }
 }
 
+/**
+ * showSchemaBanner function.
+ *
+ * @param {*} type - Function parameter.
+ * @param {*} html - Function parameter.
+ * @returns {*} Function result.
+ */
 function showSchemaBanner(type, html) {
   const banner = document.getElementById('schemaBanner');
   if (!banner) return;
@@ -1062,6 +1255,12 @@ function showSchemaBanner(type, html) {
 }
 
 // ── HELPER: highlight source button ─────────────────────────────
+/**
+ * highlightSourceBtn function.
+ *
+ * @param {*} which - Function parameter.
+ * @returns {*} Function result.
+ */
 function highlightSourceBtn(which) {
   const defBtn = document.getElementById('useDefault');
   const upBtn = document.getElementById('useUpload');

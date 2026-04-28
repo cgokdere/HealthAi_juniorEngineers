@@ -151,6 +151,12 @@ const DOMAIN_DATASETS = {
 
 // ── ACTIVE DOMAIN RESOLUTION ──────────────────────────────────────
 // Returns the dataset for the current domain, falling back to Cardiology
+/**
+ * getDatasetForDomain function.
+ *
+ * @param {*} domainName - Function parameter.
+ * @returns {*} Function result.
+ */
 function getDatasetForDomain(domainName) {
   if (!domainName) return DOMAIN_DATASETS['Cardiology'];
   // Direct match
@@ -164,6 +170,10 @@ function getDatasetForDomain(domainName) {
 }
 
 // Read domain from URL param or sessionStorage
+/**
+ * getCurrentDomain function.
+ * @returns {*} Function result.
+ */
 function getCurrentDomain() {
   try {
     const urlParams = new URLSearchParams(window.location.search);
