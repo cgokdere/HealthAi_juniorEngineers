@@ -31,9 +31,15 @@ This repository contains a lightweight, educational web application that guides 
   - Calls backend API and renders “before/after” summaries.
 
 - **Backend (FastAPI)**: `backend/`
-  - Exposes a JSON API for data preparation.
-  - Uses Pandas + NumPy + scikit-learn + imbalanced-learn.
-  - Returns processed **train/test rows** and summary statistics to drive UI charts/panels.
+  - Exposes API endpoints, validates requests, and orchestrates pipeline flow.
+  - Handles HTTP concerns (routing, CORS, response shaping, result storage, PDF/AI-advisor integration).
+  - Delegates core preprocessing/training/evaluation/explainability logic to the `ml/` package.
+
+- **ML workspace**: `ml/`
+  - Contains reusable ML core modules used by backend routers.
+  - `ml/preprocessing/`: outlier detection/filtering, imputation, normalization, SMOTE.
+  - `ml/models/`: model creation/training, metrics/evaluation, explainability and fairness helpers.
+  - Keeps ML logic modular so backend remains API-focused.
 
 - **Docs**: `docs/`
   - Run instructions 
@@ -42,20 +48,29 @@ This repository contains a lightweight, educational web application that guides 
   - Backlog Prioritization
 ---
 
+## Repository layout
+
+```text
+HealthAi_juniorEngineers/
+├── backend/
+├── frontend/
+├── ml/
+└── docs/
+```
+
+---
+
 ##  API Endpoints Reference
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/preprocess` | Clean and split uploaded CSV |
-| `POST` | `/api/train` | Train selected model with given parameters |
-| `POST` | `/api/predict` | Run prediction on test set |
-| `GET` | `/api/explain` | Feature importance / SHAP values |
-| `GET` | `/api/bias-check` | Subgroup fairness metrics |
-| `GET` | `/api/metrics` | Model evaluation metrics |
-| `GET` | `/api/certificate` | Generate PDF summary certificate |
+| `POST` | `/api/prepare` | Prepare data (column handling, split, imputation, normalization, optional SMOTE/outlier removal) |
+| `POST` | `/api/train` | Train model and return metrics, explainability, and fairness payload |
+| `GET` | `/api/results/{result_id}` | Fetch stored summary metrics for a previous training result |
+| `POST` | `/api/detect-outliers` | Detect outliers using IQR-based analysis |
+| `POST` | `/api/generate-certificate` | Generate PDF certificate/summary report |
+| `POST` | `/api/ai-advisor` | Stream LLM-based clinical model recommendation |
 | `GET` | `/api/docs` | Auto-generated FastAPI documentation |
-| `POST` | `/api/schema/validate` | Validate data schema |
-| `POST` | `/api/model/train` | Train model with params |
-| `POST` | `/api/model/metrics` | Compute confusion matrix |
+| `GET` | `/health` | Lightweight service health check |
 ---
 
 ## Project management toolchain
@@ -67,7 +82,7 @@ This repository contains a lightweight, educational web application that guides 
 | GitHub Wiki | Documentation | Architecture decisions, meeting notes, retrospective boards, API docs, sprint notes |
 | Figma | UI/UX Design | Wireframes and high-fidelity mockups for all 7 steps; clickable prototype |
 | Miro | Retrospectives | Sprint retrospective boards — Keep / Improve / Try format |
-| Google Forms / Maze | User Testing | Usability testing with non-CS participants (Weeks 9–10) |
+| Google Forms / Maze | User Testing | Usability testing with non-CS participants (Weeks 10-11) |
 
 ---
 
