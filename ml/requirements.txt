@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+imbalanced-learn
+shap
+httpx
+python-dotenv
+fpdf2
+scipy
