@@ -39,6 +39,7 @@ Users choose one of 20 medical specialties (e.g. Cardiology, Oncology, Neurology
 | Backend | FastAPI (Python) |
 | ML Engine | scikit-learn |
 | Storage | Browser Session Storage |
+| Deployment | Docker|
 
 ## Project Status
 
@@ -67,4 +68,4 @@ Users choose one of 20 medical specialties (e.g. Cardiology, Oncology, Neurology
 | Bug fix | `bugfix/[short-description]` | `bugfix/login-error` |
 | Urgent fix | `hotfix/[short-description]` | `hotfix/csv-crash` |
 
-*Prepared for SENG 430 · February 2025*
+*Prepared for SENG 430 · May 2026*
